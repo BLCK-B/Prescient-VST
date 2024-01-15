@@ -174,12 +174,9 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     phaser.prepare(spec);
 
     flangerLFO.initialise([](float x) { return std::sin(x); }, 128);
-    flangerDelayLineLeft.reset();
-    flangerDelayLineRight.reset();
-    flangerDelayLineLeft.prepare(spec);
-    flangerDelayLineLeft.setMaximumDelayInSamples(samplesPerBlock * 5);
-    flangerDelayLineRight.prepare(spec);
-    flangerDelayLineRight.setMaximumDelayInSamples(samplesPerBlock * 5);
+    flangerDelayLine.reset();
+    flangerDelayLine.prepare(spec);
+    flangerDelayLine.setMaximumDelayInSamples(samplesPerBlock * 5);
 
     flangerLFO.initialise ([] (float x) { return std::sin(x); }, 128);
 
@@ -223,41 +220,29 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     auto chainSettings = updateFilters();
 
     juce::dsp::AudioBlock<float> block(buffer);
-    //blocks representing channels
-    auto leftBlock = block.getSingleChannelBlock(0);
-    auto rightBlock = block.getSingleChannelBlock(1);
-    //context as a wrapper for a block, that a chain can use
-    juce::dsp::ProcessContextReplacing<float> leftContext(leftBlock);
-    juce::dsp::ProcessContextReplacing<float> rightContext(rightBlock);
 
     flangerLFO.setFrequency (chainSettings.flangerLFO);
     float flangerDepth = chainSettings.flangerDepth;
     float flangerRatio = chainSettings.flangerRatio;
     float flangerInvert = chainSettings.flangerInvert;
 
-    for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
-        float lfoOutput = abs(flangerLFO.processSample(0.0f));
-        float currentDelay = 0 + flangerDepth * lfoOutput;
+    for (int channel = 0; channel < totalNumInputChannels; ++channel) {
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
 
-        //left channel
-        float currentLeftSample = leftBlock.getSample(0, sample);
-        flangerDelayLineLeft.pushSample(0, currentLeftSample);
-        flangerDelayLineLeft.setDelay(currentDelay);
-        //retrieving a sample from delayline with delay
-        float delayedSampleLeft = flangerDelayLineLeft.popSample(0) * 0.5 * (1.0 - flangerRatio);
-        leftBlock.setSample(0, sample, currentLeftSample * 0.5 + flangerInvert * delayedSampleLeft);
+            float lfoOutput = abs(flangerLFO.processSample(0.0f));
+            float currentDelay = 0 + flangerDepth * lfoOutput;
 
-        //right channel
-        float currentRightSample = rightBlock.getSample(0, sample);
-        flangerDelayLineRight.pushSample(0, currentRightSample);
-        flangerDelayLineRight.setDelay(currentDelay);
-        //retrieving a sample from delayline with delay
-        float delayedSampleRight = flangerDelayLineRight.popSample(0) * 0.5 * (1.0 - flangerRatio);
-        rightBlock.setSample(0, sample, currentRightSample * 0.5 + flangerInvert * delayedSampleRight);
+            float currentSample = block.getSample(channel, sample);
+            flangerDelayLine.pushSample(channel, currentSample);
+            flangerDelayLine.setDelay(currentDelay);
+            //retrieving a sample from delayline with delay
+            float delayedSample = flangerDelayLine.popSample(channel) * 0.5 * (1.0 - flangerRatio);
+            block.setSample(channel, sample, currentSample * 0.5 + flangerInvert * delayedSample);
+
+        }
     }
 
-    //phaser.process(leftContext);
-    //phaser.process(rightContext);
+    //phaser.process(block);
 }
 
 //==============================================================================
