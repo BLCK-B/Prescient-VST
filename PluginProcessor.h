@@ -5,7 +5,7 @@
 
 struct ChainSettings {
     float phaserFreq {0}, phaserDepth {0}, phaserCenterFreq {0}, phaserFeedback {0}, phaserMix {0};
-    float flangerRatio {0}, flangerLFO {0}, flangerInvert {0}, flangerDepth {0};
+    float flangerRatio {0}, flangerLFO {0}, flangerInvert {0}, flangerDepth {0}, flangerSmooth {0};
 };
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState);
@@ -72,7 +72,7 @@ private:
     juce::dsp::Phaser<float> phaser;
     juce::dsp::Oscillator<float> flangerLFO;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> flangerDelayLine;
-    
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MyAudioProcessor)
 };

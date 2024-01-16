@@ -34,6 +34,7 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.flangerLFO = treeState.getRawParameterValue("flanger lfo")->load();
     settings.flangerInvert = treeState.getRawParameterValue("flanger invert")->load();
     settings.flangerDepth = treeState.getRawParameterValue("flanger depth")->load();
+    settings.flangerSmooth = treeState.getRawParameterValue("flanger smooth")->load();
 
     return settings;
 }
@@ -82,13 +83,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
             juce::NormalisableRange<float>(0.f, 1.f, 0.1f, 1.f), 0.5f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("flanger lfo", "Flanger Lfo",
-            juce::NormalisableRange<float>(0.f, 5.f, 0.001f, 1.f), 0.f));
+            juce::NormalisableRange<float>(0.f, 5.f, 0.001f, 0.5f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("flanger invert", "Flanger Invert",
             juce::NormalisableRange<float>(-1.f, 1.f, 2.f, 1.f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("flanger depth", "Flanger Depth",
-            juce::NormalisableRange<float>(0.f, 20.f, 0.5f, 1.f), 0.f));
+            juce::NormalisableRange<float>(0.f, 20.f, 0.1f, 1.f), 0.f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("flanger smooth", "Flanger Smooth",
+            juce::NormalisableRange<float>(0.f, 0.9f, 0.05f, 1.f), 0.f));
 
     return layout;
 }
@@ -233,12 +237,14 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             float currentDelay = 0 + flangerDepth * lfoOutput;
 
             float currentSample = block.getSample(channel, sample);
+            //push sample onto delay line
             flangerDelayLine.pushSample(channel, currentSample);
-            flangerDelayLine.setDelay(currentDelay);
             //retrieving a sample from delayline with delay
-            float delayedSample = flangerDelayLine.popSample(channel) * 0.5 * (1.0 - flangerRatio);
-            block.setSample(channel, sample, currentSample * 0.5 + flangerInvert * delayedSample);
+            int currentDelayInSamples = static_cast<int>(0.5 + currentDelay * getSampleRate() / 1000.0f);
+            float delayedSample = flangerDelayLine.popSample(channel, currentDelayInSamples, true) * (1.0 - flangerRatio);
 
+            float finalSample = flangerRatio * currentSample + delayedSample * flangerInvert;
+            block.setSample(channel, sample, finalSample);
         }
     }
 
