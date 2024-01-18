@@ -1,4 +1,3 @@
-#include <juce_audio_formats/codecs/flac/compat.h>
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
@@ -23,12 +22,6 @@ MyAudioProcessor::~MyAudioProcessor()
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     ChainSettings settings;
-    //phaser
-    settings.phaserFreq = treeState.getRawParameterValue("phaser freq")->load();
-    settings.phaserDepth = treeState.getRawParameterValue("phaser depth")->load();
-    settings.phaserCenterFreq = treeState.getRawParameterValue("phaser centerfreq")->load();
-    settings.phaserFeedback = treeState.getRawParameterValue("phaser feedback")->load();
-    settings.phaserMix = treeState.getRawParameterValue("phaser mix")->load();
     //flanger
     settings.flangerRatio = treeState.getRawParameterValue("flanger ratio")->load();
     settings.flangerLFO = treeState.getRawParameterValue("flanger lfo")->load();
@@ -39,14 +32,6 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     return settings;
 }
 
-void MyAudioProcessor::updatePhaser(const ChainSettings &chainSettings) {
-    phaser.setRate(chainSettings.phaserFreq);
-    phaser.setDepth(chainSettings.phaserDepth);
-    phaser.setCentreFrequency(chainSettings.phaserCenterFreq);
-    phaser.setFeedback(chainSettings.phaserFeedback);
-    phaser.setMix(chainSettings.phaserMix);
-}
-
 void MyAudioProcessor::updateFlanger(const ChainSettings &chainSettings) {
 
 }
@@ -54,7 +39,6 @@ void MyAudioProcessor::updateFlanger(const ChainSettings &chainSettings) {
 ChainSettings MyAudioProcessor::updateFilters()
 {
     auto chainSettings = getChainSettings(treeState);
-    updatePhaser(chainSettings);
     updateFlanger(chainSettings);
     return chainSettings;
 }
@@ -63,21 +47,6 @@ ChainSettings MyAudioProcessor::updateFilters()
 juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
-    //phaser
-    layout.add(std::make_unique<juce::AudioParameterFloat>("phaser freq", "Phaser Freq",
-                            juce::NormalisableRange<float>(0.f, 50.f, 1.f, 1.f), 0.f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("phaser depth", "Phaser Depth",
-            juce::NormalisableRange<float>(0.f, 1.f, 0.1f, 1.f), 0.f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("phaser centerfreq", "Phaser Centerfreq",
-            juce::NormalisableRange<float>(0.f, 20000.f, 1.f, 1.f), 0.f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("phaser feedback", "Phaser Feedback",
-            juce::NormalisableRange<float>(-0.8f, 0.8f, 0.1f, 1.f), 0.f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("phaser mix", "Phaser Mix",
-            juce::NormalisableRange<float>(0.f, 1.f, 0.1f, 1.f), 0.f));
     //flanger
     layout.add(std::make_unique<juce::AudioParameterFloat>("flanger ratio", "Flanger Ratio",
             juce::NormalisableRange<float>(0.f, 1.f, 0.1f, 1.f), 0.5f));
@@ -175,12 +144,13 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.numChannels = 2;
     spec.sampleRate = sampleRate;
 
-    phaser.prepare(spec);
-
     flangerLFO.initialise([](float x) { return std::sin(x); }, 128);
     flangerDelayLine.reset();
     flangerDelayLine.prepare(spec);
     flangerDelayLine.setMaximumDelayInSamples(samplesPerBlock * 5);
+
+    pitchLine.reset();
+    pitchLine.prepare(spec);
 
     flangerLFO.initialise ([] (float x) { return std::sin(x); }, 128);
 
@@ -230,6 +200,10 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     float flangerRatio = chainSettings.flangerRatio;
     float flangerInvert = chainSettings.flangerInvert;
 
+    //multi-channel buffer containing float audio samples
+    juce::AudioBuffer<float> pitchBuffer(2, 32);
+
+    int samplesSet = 0;
     for (int channel = 0; channel < totalNumInputChannels; ++channel) {
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
 
@@ -237,18 +211,74 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             float currentDelay = 0 + flangerDepth * lfoOutput;
 
             float currentSample = block.getSample(channel, sample);
+            //fill buffer to process using FFT
+            //currentSample = 1;
+            pitchBuffer.setSample(channel, sample % 32, currentSample);
+            samplesSet++;
+            if (samplesSet == 32) {
+                pitchShift(pitchBuffer, channel);
+                samplesSet = 0;
+            }
+
             //push sample onto delay line
             flangerDelayLine.pushSample(channel, currentSample);
+            pitchLine.pushSample(channel, currentSample);
             //retrieving a sample from delayline with delay
             int currentDelayInSamples = static_cast<int>(0.5 + currentDelay * getSampleRate() / 1000.0f);
             float delayedSample = flangerDelayLine.popSample(channel, currentDelayInSamples, true) * (1.0 - flangerRatio);
 
-            float finalSample = flangerRatio * currentSample + delayedSample * flangerInvert;
+            //float finalSample = flangerRatio * currentSample + delayedSample * flangerInvert;
+            //block.setSample(channel, sample, finalSample);
+
+            float finalSample = pitchBuffer.getSample(channel, sample % 32);
+            //std::cout << finalSample << "\n";
             block.setSample(channel, sample, finalSample);
         }
     }
 
-    //phaser.process(block);
+}
+
+void::MyAudioProcessor::pitchShift(juce::AudioBuffer<float>& pitchBuffer, int channel)
+{
+    //object for FFT and IFFT: number of points the FFT will operate on is 2^order
+    juce::dsp::FFT pitchFourier(5);
+    //window hann functon object
+    juce::dsp::WindowingFunction<float> hannWindow(32, juce::dsp::WindowingFunction<float>::hann, false);
+
+    float *startOfBuffer = pitchBuffer.getWritePointer(channel);
+    size_t sizeOfBuffer = pitchBuffer.getNumSamples();
+    hannWindow.multiplyWithWindowingTable(startOfBuffer, sizeOfBuffer);
+
+    //display hann func
+    std::cout << "\nhann window\n";
+    for (float g = 0.8; g >= 0; g) {
+        std::cout << "\n";
+        for (int i = 0; i < 32; i++) {
+            if (pitchBuffer.getSample(channel, i) > g)
+                std::cout << "|";
+            else
+                std::cout << "-";
+        }
+        if (g >= 0.5)
+            g -= 0.2;
+        else
+            g-= 0.1;
+    }
+
+    float *bufferFFTStart = pitchBuffer.getWritePointer(channel);
+    pitchFourier.performFrequencyOnlyForwardTransform(bufferFFTStart);
+    float pitchShiftFactor = 2;
+    for (size_t i = 0; i < pitchBuffer.getNumSamples() / 2; ++i) {
+        float frequency = i * getSampleRate() / pitchBuffer.getNumSamples();
+        float real = pitchBuffer.getSample(channel, 2 * i);     //magnitude
+        float imag = pitchBuffer.getSample(channel, 2 * i + 1); //phase
+        real *= std::pow(pitchShiftFactor, frequency);
+        imag *= std::pow(pitchShiftFactor, frequency);
+        pitchBuffer.setSample(channel, 2 * i, real);
+        pitchBuffer.setSample(channel, 2 * i + 1, imag);
+    }
+    pitchFourier.performRealOnlyInverseTransform(bufferFFTStart);
+
 }
 
 //==============================================================================

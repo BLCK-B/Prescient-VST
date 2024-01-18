@@ -4,7 +4,6 @@
 #include <juce_dsp/juce_dsp.h>
 
 struct ChainSettings {
-    float phaserFreq {0}, phaserDepth {0}, phaserCenterFreq {0}, phaserFeedback {0}, phaserMix {0};
     float flangerRatio {0}, flangerLFO {0}, flangerInvert {0}, flangerDepth {0}, flangerSmooth {0};
 };
 
@@ -28,6 +27,7 @@ public:
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
     using AudioProcessor::processBlock;
 
+    void pitchShift(juce::AudioBuffer<float>& pitchBuffer, int channel);
     //==============================================================================
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
@@ -65,13 +65,12 @@ private:
         chain.template setBypassed<Index>(false);
     }
 
-    void updatePhaser(const ChainSettings &chainSettings);
     void updateFlanger(const ChainSettings &chainSettings);
     ChainSettings updateFilters();
 
-    juce::dsp::Phaser<float> phaser;
     juce::dsp::Oscillator<float> flangerLFO;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> flangerDelayLine;
+    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> pitchLine;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MyAudioProcessor)
