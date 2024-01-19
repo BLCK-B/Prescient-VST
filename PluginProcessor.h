@@ -27,7 +27,7 @@ public:
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
     using AudioProcessor::processBlock;
 
-    void pitchShift(juce::AudioBuffer<float>& pitchBuffer, int channel);
+    void pitchShift(juce::AudioBuffer<float>& pitchBuffer, int channel, float factor);
     //==============================================================================
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
@@ -71,6 +71,9 @@ private:
     juce::dsp::Oscillator<float> flangerLFO;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> flangerDelayLine;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> pitchLine;
+    juce::AudioBuffer<float> pitchBuffer;
+
+    int samplesSet;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MyAudioProcessor)
