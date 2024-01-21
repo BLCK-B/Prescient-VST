@@ -73,7 +73,7 @@ private:
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> pitchLine;
     juce::AudioBuffer<float> pitchBuffer;
 
-    int samplesSet;
+    const int pitchSamples = 128;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MyAudioProcessor)
