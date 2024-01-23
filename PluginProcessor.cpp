@@ -1,6 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-
+#include "CustomFFT.cpp"
 //==============================================================================
 MyAudioProcessor::MyAudioProcessor()
     : AudioProcessor (BusesProperties()
@@ -155,7 +155,13 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     flangerLFO.initialise ([] (float x) { return std::sin(x); }, 128);
 
     //multi-channel buffer containing float audio samples
-    pitchBuffer.setSize(2, 128);
+    pitchBuffer.setSize(2, 64);
+
+    samplesInBuffer = 0;
+
+    //CustomFFT customFFT(32);
+    //int inputArray[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,26, 27, 28, 29, 30, 31, 32};
+    //customFFT.forwardTransform(inputArray);
 
     updateFilters();
 }
@@ -209,11 +215,20 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             float currentDelay = 0 + flangerDepth * lfoOutput;
 
             float currentSample = buffer.getSample(channel, sample);
+            //currentSample = (float) samplesInBuffer;
 
-            //currentSample = sample % 128;
-            //fill buffer to process using FFT
-            pitchBuffer.setSample(channel, sample % pitchSamples, currentSample);
-            if (sample % pitchSamples == pitchSamples - 1) {
+            pitchBuffer.setSample(channel, samplesInBuffer, currentSample);
+
+            samplesInBuffer++;
+            if (samplesInBuffer >= pitchSamples / 2) {
+               /*
+                for (float x = 0; x < pitchSamples/2; ++x) {
+                    pitchBuffer.setSample(channel, x, x + 1);
+                }*/
+                for (int d = pitchSamples / 2; d < pitchSamples; d++) {
+                    pitchBuffer.setSample(channel, d, 0);
+                }
+                samplesInBuffer = 0;
                 pitchShift(pitchBuffer, channel, factor);
             }
             //push sample onto delay line
@@ -224,14 +239,11 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             float delayedSample = flangerDelayLine.popSample(channel, currentDelayInSamples, true) * (1.0 - flangerRatio);
             */
             //float finalSample = flangerRatio * currentSample + delayedSample * flangerInvert;
-            //std::cout << finalSample <<" ";
             //buffer.setSample(channel, sample, finalSample);
-            float finalSample = pitchBuffer.getSample(channel, sample % pitchSamples);
 
-            //std::cout << sample % 128 << " " << finalSample << "\n";
-            //std::cout << finalSample << "\n";
+            float finalSample = pitchBuffer.getSample(channel, samplesInBuffer);
+            //std::cout << "resulting " << finalSample << "\n";
             buffer.setSample(channel, sample, finalSample);
-
         }
     }
 
@@ -239,20 +251,26 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
 void::MyAudioProcessor::pitchShift(juce::AudioBuffer<float>& pitchBuffer, int channel, float factor) {
     //commented-out attempt using STFT but I just cant get it to work
-    /*juce::dsp::FFT pitchFourier(6); // 2^order
+    juce::dsp::FFT pitchFourier(5); // 2^order
     juce::dsp::WindowingFunction<float> hannWindow(pitchSamples, juce::dsp::WindowingFunction<float>::hann, false);
 
-    std::cout << "\n\n this is input samples\n";
-    for (int x = 0; x < pitchBuffer.getNumSamples(); x++) {
+    /*std::cout << "\n\n this is input samples\n";
+    for (int x = 0; x < pitchSamples; x++) {
         std::cout << pitchBuffer.getSample(channel, x) << "  ";
-    }
+    }*/
 
     float *startOfBuffer = pitchBuffer.getWritePointer(channel);
     size_t sizeOfBuffer = pitchBuffer.getNumSamples();
     //hannWindow.multiplyWithWindowingTable(startOfBuffer, sizeOfBuffer);
 
-    std::cout << "\n now onto after FFT \n";
-    pitchFourier.performFrequencyOnlyForwardTransform(startOfBuffer);
+    //std::cout << "\n now onto after FFT \n";
+    /*
+    The size of the array passed in must be 2 * getSize(), and the first half
+    should contain your raw input sample data. On return, if
+    onlyCalculateNonNegativeFrequencies is false, the array will contain size
+    complex real + imaginary parts data interleaved.
+    */
+    pitchFourier.performRealOnlyForwardTransform(startOfBuffer, false);
     /*
      To change the perceived pitch while maintaining the original length and timbre, we need to modify the phase factor applied to these components.
      By modifying the phases, we are essentially altering the timing relationship between the components.
@@ -269,11 +287,11 @@ void::MyAudioProcessor::pitchShift(juce::AudioBuffer<float>& pitchBuffer, int ch
             Re(k) = Re(k) * cos(φ(k, n)) - Im(k) * sin(φ(k, n))
             Im(k) = Re(k) * sin(φ(k, n)) + Im(k) * cos(φ(k, n))
     */
-
-    /*for (int i = 0; i < pitchSamples / 2; ++i) {                        //i.. frequency bins
+    //std::cout << "these are after FFT\n";
+    for (int i = 0; i < pitchSamples / 2; ++i) {                        //i.. frequency bins
         float real = pitchBuffer.getSample(channel, 2 * i);     //even indices.. magnitude
         float imag = pitchBuffer.getSample(channel,2 * i + 1); //odd indices... phase .. after IFFT manifests in time delay
-        std::cout << real << " " << imag << "\n";
+        //std::cout << real << " " << imag << "\n";
         //here we assume the highest magnitude is always the first
         float originalMaxMag = pitchBuffer.getSample(channel, 0);
         float originalFund = getSampleRate() / pitchSamples;
@@ -286,8 +304,8 @@ void::MyAudioProcessor::pitchShift(juce::AudioBuffer<float>& pitchBuffer, int ch
         pitchBuffer.setSample(channel, 2 * i, newReal);
         pitchBuffer.setSample(channel, 2 * i + 1, newImag);
     }
-    std::cout << "\nafter IFFT\n";
     pitchFourier.performRealOnlyInverseTransform(startOfBuffer);
+    /*std::cout << "\n after IFFT \n";
     for (int i = 0; i < pitchSamples / 2; ++i) {                        //i.. frequency bins
         float real = pitchBuffer.getSample(channel, 2 * i);     //even indices.. magnitude
         float imag = pitchBuffer.getSample(channel,2 * i + 1); //odd indices... phase .. after IFFT manifests in time delay
