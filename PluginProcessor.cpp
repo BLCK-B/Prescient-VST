@@ -195,56 +195,73 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     //=================================================================================
     auto chainSettings = updateFilters();
     float factor = chainSettings.flangerSmooth;
+    // continual buffer that loads values from "buffer" and every frame is copied into pitchBufferFFT
+    juce::AudioBuffer<float> pitchBufferGather(getTotalNumInputChannels(), blockSize);
+    // once pitchBufferFFT makes a copy, it is sent to STFT and then outputs
+    juce::AudioBuffer<float> pitchBufferFFT(getTotalNumInputChannels(), blockSize);
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
         for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-            //flanger calling
             float currentSample = buffer.getSample(channel, sample);
+            pitchBufferGather.setSample(channel, sample, currentSample);
+            // flanger calling
             flangerLFO.setFrequency (chainSettings.flangerLFO);
             float flangerDepth = chainSettings.flangerDepth;
             float flangerRatio = chainSettings.flangerRatio;
             float flangerInvert = chainSettings.flangerInvert;
             float lfoOutput = flangerLFO.processSample(0.0f);
             float currentDelay = chainSettings.flangerSmooth + flangerDepth * lfoOutput;
-            //note: similar depth and base sounds good
+            // note: similar depth and base sounds good
             float processedSample = flangerEffect(channel, currentSample, currentDelay, flangerInvert, flangerRatio);
             //buffer.setSample(channel, sample, processedSample);
         }
-        if (counter >= blockSize / 2) {
-            //the block must be twice the size of number of useful data and FFT due to the real and imaginary values after FFT
-            juce::dsp::AudioBlock<float> pitchBlock(buffer.getArrayOfWritePointers(), totalNumInputChannels, blockSize);
 
-            //setting sample values for testing
+        // sending frame to be processed
+        if (counter >= blockSize / 2) {
+            // copy frame into pitchBufferFFT
+            for (int channel = 0; channel < getTotalNumInputChannels(); ++channel) {
+                pitchBufferFFT.copyFrom(channel, 0, pitchBufferGather, channel, 0, blockSize);
+            }
+            pitchBufferGather.clear();
+            // setting sample values for testing
             /*for (int channel = 0; channel < totalNumInputChannels; ++channel) {
                 for (int i = 0; i < blockSize / 2; ++i) {
-                    float* startOfBuffer = pitchBlock.getChannelPointer(channel);
-                    startOfBuffer[i] = static_cast<float>(i + 1);
+                    pitchBufferFFT.setSample(channel, i, static_cast<float>(i + 1));
                 }
             }*/
-
-            pitchShift(pitchBlock, factor);
+            try {
+                pitchShift(factor, pitchBufferFFT);
+            } catch (...) {
+                std::cout << "error";
+            }
             counter = 0;
-        } else {
+        } else
             counter++;
+
+        // setting processed samples back into buffer
+        for (int channel = 0; channel < totalNumInputChannels; ++channel) {
+            float finalSample = pitchBufferFFT.getSample(channel, counter);
+            //if (channel == 0)
+              //  std::cout << " dis inserted now: " << currentSample << " index: " << counter << "\n";
+            buffer.setSample(channel, sample, finalSample);
         }
     }
 }
 
-void::MyAudioProcessor::pitchShift(juce::dsp::AudioBlock<float>& pitchBlock, float factor) {
+void::MyAudioProcessor::pitchShift(float factor, juce::AudioBuffer<float>& pitchBufferFFT) {
     juce::dsp::FFT pitchFourier(9); // 2^order
     juce::dsp::WindowingFunction<float> hannWindow(blockSize / 2, juce::dsp::WindowingFunction<float>::hann, false);
 
-    for (int channel = 0; channel < pitchBlock.getNumChannels(); ++channel) {
-        float* blockPointer = pitchBlock.getChannelPointer(channel);
-
-        //applying hann window to avoid spectral leakage
-        //hannWindow.multiplyWithWindowingTable(startOfBuffer, blockSize);
-        //forward FFT
-        pitchFourier.performRealOnlyForwardTransform(pitchBlock, false);
-        //pitch shifting: FFT produces interleaved real (magnitudes) and imaginary numbers (phases)
+    for (int channel = 0; channel < getTotalNumInputChannels(); ++channel) {
+        float* bufferChannelPointer = pitchBufferFFT.getWritePointer(channel);
+        // applying hann window to avoid spectral leakage
+        hannWindow.multiplyWithWindowingTable(bufferChannelPointer, blockSize);
+        // forward FFT
+        pitchFourier.performRealOnlyForwardTransform(bufferChannelPointer, false);
+        // pitch shifting: FFT produces interleaved real (magnitudes) and imaginary numbers (phases)
         /*for (int i = 0; i < blockSize / 2; ++i) {
-            float real = startOfBuffer[2 * i];
-            float imag = startOfBuffer[2 * i + 1];
+            float real = pitchBufferFFT.getSample(channel, 2 * i);
+            float imag = pitchBufferFFT.getSample(channel, 2 * i + 1);
             //std::cout << real << " " << imag << "\n";
             float originalFund = getSampleRate() / blockSize;
             float newFund = originalFund * factor;
@@ -253,27 +270,24 @@ void::MyAudioProcessor::pitchShift(juce::dsp::AudioBlock<float>& pitchBlock, flo
             float newReal = real * cos(phaseFactor) - imag * sin(phaseFactor);
             float newImag = real * sin(phaseFactor) + imag * cos(phaseFactor);
             //set the new values
-            startOfBuffer[2 * i] = newReal;
-            startOfBuffer[2 * i + 1] = newImag;
+            pitchBufferFFT.setSample(channel, 2 * i, newReal);
+            pitchBufferFFT.setSample(channel, 2 * i + 1, newImag);
         }*/
-        //inverse FFT
-        pitchFourier.performRealOnlyInverseTransform(blockPointer);
-
-        //copying first half to the second
+        // inverse FFT
+        pitchFourier.performRealOnlyInverseTransform(bufferChannelPointer);
+        // copying first half to the second
         /*for (int channel = 0; channel < pitchBlock.getNumChannels(); ++channel) {
             for (int i = 0; i < blockSize / 2; ++i) {
                 startOfBuffer[blockSize / 2 + i] = startOfBuffer[i];
             }
         }*/
 
-        //printing values
-        /*for (int channel = 0; channel < pitchBlock.getNumChannels() / 2; ++channel) {
-            //float* startOfBuffer = pitchBlock.getChannelPointer(channel);
-            for (size_t sample = 0; sample < blockSize; ++sample) {
-                std::cout << startOfBuffer[sample] << "\n";
-            }
-            std::cout << "\n";
-        }*/
+        // printing values
+        /*for (int sample = 0; sample < blockSize; ++sample) {
+            if (channel == 0)
+                std::cout << pitchBufferFFT.getSample(channel, sample) << "\n";
+        }
+        std::cout << "\n";*/
     }
 
     /*
