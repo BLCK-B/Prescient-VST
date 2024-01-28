@@ -73,7 +73,8 @@ private:
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> flangerDelayLine;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> pitchLine;
 
-    int blockSize = 2048;
+    //FFT size = samples = blockSize / 2
+    const int blockSize = 1024; //1024
     int counter = 0;
 
     //==============================================================================

@@ -50,11 +50,11 @@ public:
         WrealVector.clear();
         WimagVector.clear();
 
-        /*cout << "result of forward FFT:\n";
+        cout << "result of forward FFT:\n";
         for (int f = 0; f < N; ++f) {
             cout << "x" << f << " = " << outputArray[2 * f] << " ";
             cout << outputArray[2 * f + 1] << "j\n";
-        }*/
+        }
     }
 
 private:

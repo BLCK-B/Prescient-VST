@@ -194,14 +194,10 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         buffer.clear (i, 0, buffer.getNumSamples());
     //=================================================================================
     auto chainSettings = updateFilters();
-
     float factor = chainSettings.flangerSmooth;
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
-        int blockSizeRemaining = juce::jmin(blockSize, buffer.getNumSamples() - sample);
-        std::vector<float*> channelData(totalNumInputChannels);
         for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-            channelData[channel] = buffer.getWritePointer(channel, sample);
             //flanger calling
             float currentSample = buffer.getSample(channel, sample);
             flangerLFO.setFrequency (chainSettings.flangerLFO);
@@ -209,21 +205,24 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             float flangerRatio = chainSettings.flangerRatio;
             float flangerInvert = chainSettings.flangerInvert;
             float lfoOutput = flangerLFO.processSample(0.0f);
-            float currentDelay = 0 + flangerDepth * lfoOutput;
+            float currentDelay = chainSettings.flangerSmooth + flangerDepth * lfoOutput;
+            //note: similar depth and base sounds good
             float processedSample = flangerEffect(channel, currentSample, currentDelay, flangerInvert, flangerRatio);
-            buffer.setSample(channel, sample, processedSample);
+            //buffer.setSample(channel, sample, processedSample);
         }
-        //the block must be twice the size of number of useful data and FFT due to the real and imaginary values after FFT
-        juce::dsp::AudioBlock<float> pitchBlock(&channelData[0], totalNumInputChannels, blockSizeRemaining);
-        //setting sample values for testing
-        /*for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-            for (int i = 0; i < blockSizeRemaining / 2; ++i) {
-                float* startOfBuffer = pitchBlock.getChannelPointer(channel);
-                startOfBuffer[i] = static_cast<float>(i + 1);
-            }
-        }*/
         if (counter >= blockSize / 2) {
-            //pitchShift(pitchBlock, factor);
+            //the block must be twice the size of number of useful data and FFT due to the real and imaginary values after FFT
+            juce::dsp::AudioBlock<float> pitchBlock(buffer.getArrayOfWritePointers(), totalNumInputChannels, blockSize);
+
+            //setting sample values for testing
+            /*for (int channel = 0; channel < totalNumInputChannels; ++channel) {
+                for (int i = 0; i < blockSize / 2; ++i) {
+                    float* startOfBuffer = pitchBlock.getChannelPointer(channel);
+                    startOfBuffer[i] = static_cast<float>(i + 1);
+                }
+            }*/
+
+            pitchShift(pitchBlock, factor);
             counter = 0;
         } else {
             counter++;
@@ -232,16 +231,16 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 }
 
 void::MyAudioProcessor::pitchShift(juce::dsp::AudioBlock<float>& pitchBlock, float factor) {
-    juce::dsp::FFT pitchFourier(10); // 2^order
-    juce::dsp::WindowingFunction<float> hannWindow(blockSize, juce::dsp::WindowingFunction<float>::hann, false);
+    juce::dsp::FFT pitchFourier(9); // 2^order
+    juce::dsp::WindowingFunction<float> hannWindow(blockSize / 2, juce::dsp::WindowingFunction<float>::hann, false);
 
     for (int channel = 0; channel < pitchBlock.getNumChannels(); ++channel) {
-        float* startOfBuffer = pitchBlock.getChannelPointer(channel);
-        size_t sizeOfBuffer = pitchBlock.getNumSamples();
+        float* blockPointer = pitchBlock.getChannelPointer(channel);
+
         //applying hann window to avoid spectral leakage
-        //hannWindow.multiplyWithWindowingTable(startOfBuffer, sizeOfBuffer);
+        //hannWindow.multiplyWithWindowingTable(startOfBuffer, blockSize);
         //forward FFT
-        pitchFourier.performRealOnlyForwardTransform(startOfBuffer, false);
+        pitchFourier.performRealOnlyForwardTransform(pitchBlock, false);
         //pitch shifting: FFT produces interleaved real (magnitudes) and imaginary numbers (phases)
         /*for (int i = 0; i < blockSize / 2; ++i) {
             float real = startOfBuffer[2 * i];
@@ -258,12 +257,19 @@ void::MyAudioProcessor::pitchShift(juce::dsp::AudioBlock<float>& pitchBlock, flo
             startOfBuffer[2 * i + 1] = newImag;
         }*/
         //inverse FFT
-        pitchFourier.performRealOnlyInverseTransform(startOfBuffer);
+        pitchFourier.performRealOnlyInverseTransform(blockPointer);
+
+        //copying first half to the second
+        /*for (int channel = 0; channel < pitchBlock.getNumChannels(); ++channel) {
+            for (int i = 0; i < blockSize / 2; ++i) {
+                startOfBuffer[blockSize / 2 + i] = startOfBuffer[i];
+            }
+        }*/
 
         //printing values
         /*for (int channel = 0; channel < pitchBlock.getNumChannels() / 2; ++channel) {
-            float* startOfBuffer = pitchBlock.getChannelPointer(channel);
-            for (size_t sample = 0; sample < pitchBlock.getNumSamples(); ++sample) {
+            //float* startOfBuffer = pitchBlock.getChannelPointer(channel);
+            for (size_t sample = 0; sample < blockSize; ++sample) {
                 std::cout << startOfBuffer[sample] << "\n";
             }
             std::cout << "\n";
@@ -286,7 +292,6 @@ void::MyAudioProcessor::pitchShift(juce::dsp::AudioBlock<float>& pitchBlock, flo
             Re(k) = Re(k) * cos(φ(k, n)) - Im(k) * sin(φ(k, n))
             Im(k) = Re(k) * sin(φ(k, n)) + Im(k) * cos(φ(k, n))
     */
-
 }
 
 float MyAudioProcessor::flangerEffect(int channel, float currentSample, float currentDelay, float flangerInvert, float flangerRatio) {
