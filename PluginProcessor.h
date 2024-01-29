@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
+#include "FFTProcessor.h"
 
 struct ChainSettings {
     float flangerRatio {0}, flangerLFO {0}, flangerInvert {0}, flangerDepth {0}, flangerSmooth {0};
@@ -27,8 +28,7 @@ public:
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
     using AudioProcessor::processBlock;
 
-    void pitchShift(float factor, juce::AudioBuffer<float>& pitchBufferFFT);
-    float flangerEffect(int channel, float currentSample, float currentDelay, float flangerInvert, float flangerRatio);
+    float flangerEffect(int channel, float currentSample);
     //==============================================================================
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
@@ -72,11 +72,8 @@ private:
     juce::dsp::Oscillator<float> flangerLFO;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> flangerDelayLine;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> pitchLine;
-    //FFT size = samples = blockSize / 2
-    const int blockSize = 1024; //1024
-    int counter = 0;
-    std::array<float, 1024> pitchArray;
 
+    FFTProcessor fft[9];
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MyAudioProcessor)
 };

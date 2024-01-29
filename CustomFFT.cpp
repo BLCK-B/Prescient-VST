@@ -5,8 +5,7 @@
 using namespace std;
 
 //this is my own implementation of a forward FFT since JUCE's was not clear how to use
-//thanks to comparing, I managed to get the JUCE implementation to produce correct
-//results, at a faster rate, so I'm leaving this here just in case I will need it
+//I'm leaving this here just in case I will need it
 class CustomFFT {
 public:
     CustomFFT(int size) {
@@ -29,7 +28,6 @@ public:
                 Wimag = 0;
             WrealVector.push_back(Wreal);
             WimagVector.push_back(Wimag);
-            //cout << "factor W" << kn << ": " << Wreal << " " << Wimag << "j" << "\n";
         }
         //formula
         for (int k = 0; k <= N - 1; ++k) {

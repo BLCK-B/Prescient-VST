@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "CustomFFT.cpp"
+#include "FFTProcessor.cpp"
 //==============================================================================
 MyAudioProcessor::MyAudioProcessor()
     : AudioProcessor (BusesProperties()
@@ -156,6 +157,10 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     //int inputArray[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,26, 27, 28, 29, 30, 31, 32};
     //customFFT.forwardTransform(inputArray);
 
+    setLatencySamples(fft[0].getLatencyInSamples());
+    fft[0].reset();
+    fft[1].reset();
+
     updateFilters();
 }
 
@@ -195,120 +200,35 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     //=================================================================================
     auto chainSettings = updateFilters();
     float factor = chainSettings.flangerSmooth;
-    // continual buffer that loads values from "buffer" and every frame is copied into pitchBufferFFT
-    juce::AudioBuffer<float> pitchBufferGather(getTotalNumInputChannels(), blockSize);
-    // once pitchBufferFFT makes a copy, it is sent to STFT and then outputs
-    juce::AudioBuffer<float> pitchBufferFFT(getTotalNumInputChannels(), blockSize);
+    float* channelL = buffer.getWritePointer(0);
+    float* channelR = buffer.getWritePointer(1);
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
+        //fft
+        float sampleL = channelL[sample];
+        float sampleR = channelR[sample];
+        sampleL = fft[0].processSample(sampleL, factor);
+        sampleR = fft[1].processSample(sampleR, factor);
+        channelL[sample] = sampleL;
+        channelR[sample] = sampleR;
+
         for (int channel = 0; channel < totalNumInputChannels; ++channel) {
             float currentSample = buffer.getSample(channel, sample);
-            pitchBufferGather.setSample(channel, sample, currentSample);
-            // flanger calling
-            flangerLFO.setFrequency (chainSettings.flangerLFO);
-            float flangerDepth = chainSettings.flangerDepth;
-            float flangerRatio = chainSettings.flangerRatio;
-            float flangerInvert = chainSettings.flangerInvert;
-            float lfoOutput = flangerLFO.processSample(0.0f);
-            float currentDelay = chainSettings.flangerSmooth + flangerDepth * lfoOutput;
-            // note: similar depth and base sounds good
-            float processedSample = flangerEffect(channel, currentSample, currentDelay, flangerInvert, flangerRatio);
+            // flanger calling, note: similar depth and base sounds good
+            //float processedSample = flangerEffect(channel, currentSample);
             //buffer.setSample(channel, sample, processedSample);
         }
-
-        // sending frame to be processed
-        if (counter >= blockSize / 2) {
-            // copy frame into pitchBufferFFT
-            for (int channel = 0; channel < getTotalNumInputChannels(); ++channel) {
-                pitchBufferFFT.copyFrom(channel, 0, pitchBufferGather, channel, 0, blockSize);
-            }
-            pitchBufferGather.clear();
-            // setting sample values for testing
-            /*for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-                for (int i = 0; i < blockSize / 2; ++i) {
-                    pitchBufferFFT.setSample(channel, i, static_cast<float>(i + 1));
-                }
-            }*/
-            try {
-                pitchShift(factor, pitchBufferFFT);
-            } catch (...) {
-                std::cout << "error";
-            }
-            counter = 0;
-        } else
-            counter++;
-
-        // setting processed samples back into buffer
-        for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-            float finalSample = pitchBufferFFT.getSample(channel, counter);
-            //if (channel == 0)
-              //  std::cout << " dis inserted now: " << currentSample << " index: " << counter << "\n";
-            buffer.setSample(channel, sample, finalSample);
-        }
     }
 }
 
-void::MyAudioProcessor::pitchShift(float factor, juce::AudioBuffer<float>& pitchBufferFFT) {
-    juce::dsp::FFT pitchFourier(9); // 2^order
-    juce::dsp::WindowingFunction<float> hannWindow(blockSize / 2, juce::dsp::WindowingFunction<float>::hann, false);
-
-    for (int channel = 0; channel < getTotalNumInputChannels(); ++channel) {
-        float* bufferChannelPointer = pitchBufferFFT.getWritePointer(channel);
-        // applying hann window to avoid spectral leakage
-        hannWindow.multiplyWithWindowingTable(bufferChannelPointer, blockSize);
-        // forward FFT
-        pitchFourier.performRealOnlyForwardTransform(bufferChannelPointer, false);
-        // pitch shifting: FFT produces interleaved real (magnitudes) and imaginary numbers (phases)
-        /*for (int i = 0; i < blockSize / 2; ++i) {
-            float real = pitchBufferFFT.getSample(channel, 2 * i);
-            float imag = pitchBufferFFT.getSample(channel, 2 * i + 1);
-            //std::cout << real << " " << imag << "\n";
-            float originalFund = getSampleRate() / blockSize;
-            float newFund = originalFund * factor;
-            float phaseFactor = 2 * juce::MathConstants<float>::pi * i * newFund / blockSize;
-
-            float newReal = real * cos(phaseFactor) - imag * sin(phaseFactor);
-            float newImag = real * sin(phaseFactor) + imag * cos(phaseFactor);
-            //set the new values
-            pitchBufferFFT.setSample(channel, 2 * i, newReal);
-            pitchBufferFFT.setSample(channel, 2 * i + 1, newImag);
-        }*/
-        // inverse FFT
-        pitchFourier.performRealOnlyInverseTransform(bufferChannelPointer);
-        // copying first half to the second
-        /*for (int channel = 0; channel < pitchBlock.getNumChannels(); ++channel) {
-            for (int i = 0; i < blockSize / 2; ++i) {
-                startOfBuffer[blockSize / 2 + i] = startOfBuffer[i];
-            }
-        }*/
-
-        // printing values
-        /*for (int sample = 0; sample < blockSize; ++sample) {
-            if (channel == 0)
-                std::cout << pitchBufferFFT.getSample(channel, sample) << "\n";
-        }
-        std::cout << "\n";*/
-    }
-
-    /*
-    When we perform a pitch shift, we're essentially multiplying the magnitude of each frequency
-    component by a constant factor and adding a phase shift to it. This phase shift is represented by
-    the imaginary part of the FFT result.
-    1. Calculate the new fundamental frequency (pitch) for each frame (i) in the input by identifying the peak magnitude.
-    2. Determine the phase factor
-        φ(i, n) = 2π * i * fn / N  ... phase factor
-            i is the index of the frequency component (i = 0, ..., N-1), please note: real/imaginary distinction
-            N is the FFT size
-            fn is the new fundamental frequency
-        fn = f0 * factor .. f0 (first harmonic) represents the highest magnitude, factor is user-selected
-        f0 = fs / N .. fs sampling frequency
-    3.  Apply phase factor to each frequency component by multiplying their real, imaginary parts with phase factor
-            Re(k) = Re(k) * cos(φ(k, n)) - Im(k) * sin(φ(k, n))
-            Im(k) = Re(k) * sin(φ(k, n)) + Im(k) * cos(φ(k, n))
-    */
-}
-
-float MyAudioProcessor::flangerEffect(int channel, float currentSample, float currentDelay, float flangerInvert, float flangerRatio) {
+float MyAudioProcessor::flangerEffect(int channel, float currentSample) {
+    auto chainSettings = getChainSettings(treeState);
+    flangerLFO.setFrequency (chainSettings.flangerLFO);
+    float flangerDepth = chainSettings.flangerDepth;
+    float flangerRatio = chainSettings.flangerRatio;
+    float flangerInvert = chainSettings.flangerInvert;
+    float lfoOutput = flangerLFO.processSample(0.0f);
+    float currentDelay = chainSettings.flangerSmooth + flangerDepth * lfoOutput;
     //push sample onto delay line
     flangerDelayLine.pushSample(channel, currentSample);
     pitchLine.pushSample(channel, currentSample);
