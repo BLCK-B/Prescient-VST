@@ -73,15 +73,20 @@ void FFTProcessor::processFrame(float factor)
 void FFTProcessor::processSpectrum(float* data, int numBins, float factor)
 {
     auto* cdata = reinterpret_cast<std::complex<float>*>(data);
-    int newNumBins = static_cast<int>(numBins * factor);
 
-    for (int i = 0; i < newNumBins; ++i) {
-        int index = static_cast<int>(i * factor);
-        float shiftedBinIndex = i / factor;
+    for (int i = 0; i < numBins; ++i) {
+        float magn = std::abs(cdata[i]);
+        float phase = std::arg(cdata[i]);
+        //int newIndex = static_cast<int>(i * factor);
+        int newIndex = std::floor(i * factor);
 
-        float magnitude = std::abs(cdata[index]);
-        float phase = std::arg(cdata[index]);
+        while (newIndex > numBins) {
+            newIndex -= numBins;
+        }
+        while (newIndex < 0) {
+            newIndex += (numBins + newIndex);
+        }
 
-        cdata[i] = std::polar(magnitude, phase);
+        cdata[newIndex] = std::polar(magn, phase);
     }
 }

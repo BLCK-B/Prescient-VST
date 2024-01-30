@@ -62,7 +62,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
             juce::NormalisableRange<float>(0.f, 20.f, 0.1f, 1.f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("flanger smooth", "Flanger Smooth",
-            juce::NormalisableRange<float>(0.1f, 8.f, 0.1f, 1.f), 1.f));
+            juce::NormalisableRange<float>(0.1f, 8.f, 0.01f, 1.f), 1.f));
 
     return layout;
 }
@@ -233,7 +233,7 @@ float MyAudioProcessor::flangerEffect(int channel, float currentSample) {
     flangerDelayLine.pushSample(channel, currentSample);
     pitchLine.pushSample(channel, currentSample);
     //retrieving a sample from delayline with delay
-    int currentDelayInSamples = static_cast<int>(0.5 + currentDelay * getSampleRate() / 1000.0f);
+    int currentDelayInSamples = static_cast<int>(currentDelay * getSampleRate() / 1000.0f);
     float delayedSample = flangerDelayLine.popSample(channel, currentDelayInSamples, true) * (1.0 - flangerRatio);
 
     float finalSample = flangerRatio * currentSample + delayedSample * flangerInvert;
