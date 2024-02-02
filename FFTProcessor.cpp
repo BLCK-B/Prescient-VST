@@ -20,11 +20,11 @@ void FFTProcessor::reset()
 void FFTProcessor::processBlock(float* data, int numSamples)
 {
     for (int i = 0; i < numSamples; ++i) {
-        data[i] = processSample(data[i], 1.0);
+        data[i] = processSample(data[i], 1.0, false);
     }
 }
 
-float FFTProcessor::processSample(float sample, float factor)
+float FFTProcessor::processSample(float sample, float factor, bool robot)
 {   // pos = position
     inputFifo[pos] = sample;
     float outputSample = outputFifo[pos];
@@ -37,12 +37,12 @@ float FFTProcessor::processSample(float sample, float factor)
     count += 1;
     if (count == hopSize) {
         count = 0;
-        processFrame(factor);
+        processFrame(factor, robot);
     }
     return outputSample;
 }
 
-void FFTProcessor::processFrame(float factor)
+void FFTProcessor::processFrame(float factor, bool robot)
 {
     const float* inputPtr = inputFifo.data();
     float* fftPtr = fftData.data();
@@ -53,7 +53,7 @@ void FFTProcessor::processFrame(float factor)
 
     window.multiplyWithWindowingTable(fftPtr, fftSize);
     fft.performRealOnlyForwardTransform(fftPtr, true);
-    processSpectrum(fftPtr, numBins, factor);
+    processSpectrum(fftPtr, numBins, factor, robot);
     fft.performRealOnlyInverseTransform(fftPtr);
     window.multiplyWithWindowingTable(fftPtr, fftSize);
 
@@ -70,23 +70,38 @@ void FFTProcessor::processFrame(float factor)
     }
 }
 
-void FFTProcessor::processSpectrum(float* data, int numBins, float factor)
+void FFTProcessor::processSpectrum(float* data, int numBins, float factor, bool robot)
 {
     auto* cdata = reinterpret_cast<std::complex<float>*>(data);
+
+    auto* tempData1 = new std::complex<float>[numBins];
 
     for (int i = 0; i < numBins; ++i) {
         float magn = std::abs(cdata[i]);
         float phase = std::arg(cdata[i]);
-        //int newIndex = static_cast<int>(i * factor);
-        int newIndex = std::floor(i * factor);
 
-        while (newIndex > numBins) {
-            newIndex -= numBins;
+        int newIndex = std::round(i /** factor*/);
+
+        if (newIndex > numBins || newIndex < numBins)
+            newIndex %= numBins;
+
+        //cool robo voice
+        if (robot)
+            phase = 0;
+
+        phase += factor * 8;
+
+        while (phase < 2 * M_PI) {
+            phase += 2 * M_PI;
         }
-        while (newIndex < 0) {
-            newIndex += (numBins + newIndex);
+        while (phase > 2 * M_PI) {
+            phase -= 2 * M_PI;
         }
 
-        cdata[newIndex] = std::polar(magn, phase);
+        tempData1[newIndex] = std::polar(magn * 2, phase);
+        //cdata[newIndex] = std::polar(magn, phase);
+    }
+    for (int i = 0; i < numBins; ++i) {
+            cdata[i] = tempData1[i];
     }
 }

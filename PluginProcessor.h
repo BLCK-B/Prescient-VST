@@ -5,7 +5,8 @@
 #include "FFTProcessor.h"
 
 struct ChainSettings {
-    float flangerRatio {0}, flangerLFO {0}, flangerInvert {0}, flangerDepth {0}, flangerSmooth {0};
+    float flangerRatio {0}, flangerLFO {0}, flangerInvert {0}, flangerDepth {0}, flangerBase {0}, pitchShift {0};
+    bool robot, FFT;
 };
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState);
@@ -71,7 +72,6 @@ private:
 
     juce::dsp::Oscillator<float> flangerLFO;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> flangerDelayLine;
-    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> pitchLine;
 
     FFTProcessor fft[9];
     //==============================================================================
