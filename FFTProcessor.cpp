@@ -25,7 +25,8 @@ void FFTProcessor::processBlock(float* data, int numSamples)
 }
 
 float FFTProcessor::processSample(float sample, float factor, bool robot)
-{   // pos = position
+{
+    // pos = position
     inputFifo[pos] = sample;
     float outputSample = outputFifo[pos];
     outputFifo[pos] = 0.0f;
@@ -74,22 +75,13 @@ void FFTProcessor::processSpectrum(float* data, int numBins, float factor, bool 
 {
     auto* cdata = reinterpret_cast<std::complex<float>*>(data);
 
-    auto* tempData1 = new std::complex<float>[numBins];
-
     for (int i = 0; i < numBins; ++i) {
         float magn = std::abs(cdata[i]);
         float phase = std::arg(cdata[i]);
 
-        int newIndex = std::round(i /** factor*/);
-
-        if (newIndex > numBins || newIndex < numBins)
-            newIndex %= numBins;
-
         //cool robo voice
         if (robot)
             phase = 0;
-
-        phase += factor * 8;
 
         while (phase < 2 * M_PI) {
             phase += 2 * M_PI;
@@ -98,10 +90,6 @@ void FFTProcessor::processSpectrum(float* data, int numBins, float factor, bool 
             phase -= 2 * M_PI;
         }
 
-        tempData1[newIndex] = std::polar(magn * 2, phase);
-        //cdata[newIndex] = std::polar(magn, phase);
-    }
-    for (int i = 0; i < numBins; ++i) {
-            cdata[i] = tempData1[i];
+        cdata[i] = std::polar(magn, phase);
     }
 }

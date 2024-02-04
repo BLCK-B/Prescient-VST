@@ -6,7 +6,7 @@
 
 struct ChainSettings {
     float flangerRatio {0}, flangerLFO {0}, flangerInvert {0}, flangerDepth {0}, flangerBase {0}, pitchShift {0};
-    bool robot, FFT;
+    bool robot {false}, FFT {false};
 };
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState);
@@ -29,7 +29,7 @@ public:
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
     using AudioProcessor::processBlock;
 
-    float flangerEffect(int channel, float currentSample);
+    float flangerEffect(float currentSample);
     //==============================================================================
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
@@ -58,7 +58,7 @@ public:
 
 private:
 
-    //listener for parameter change : now irrelevant not used
+    //listener for parameter change
     void parameterChanged(const juce::String& parameterID, float newValue) override;
 
     template<int Index, typename ChainType, typename CoefficientType>
@@ -67,11 +67,10 @@ private:
         chain.template setBypassed<Index>(false);
     }
 
-    void updateFlanger(const ChainSettings &chainSettings);
-    ChainSettings updateFilters();
-
     juce::dsp::Oscillator<float> flangerLFO;
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> flangerDelayLine;
+
+    ChainSettings chainSettings;
 
     FFTProcessor fft[9];
     //==============================================================================

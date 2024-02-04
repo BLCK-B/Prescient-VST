@@ -13,17 +13,22 @@ MyAudioProcessor::MyAudioProcessor()
         #endif
     )
 {
-
+    treeState.addParameterListener("flanger ratio", this);
+    treeState.addParameterListener("flanger lfo", this);
+    treeState.addParameterListener("flanger invert", this);
+    treeState.addParameterListener("flanger depth", this);
+    treeState.addParameterListener("flanger base", this);
+    treeState.addParameterListener("pitch shift", this);
+    treeState.addParameterListener("robot", this);
+    treeState.addParameterListener("FFT", this);
 }
 
 MyAudioProcessor::~MyAudioProcessor()
 {
-
 }
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     ChainSettings settings;
-    //flanger
     settings.flangerRatio = treeState.getRawParameterValue("flanger ratio")->load();
     settings.flangerLFO = treeState.getRawParameterValue("flanger lfo")->load();
     settings.flangerInvert = treeState.getRawParameterValue("flanger invert")->load();
@@ -34,17 +39,6 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.FFT = treeState.getRawParameterValue("FFT")->load();
 
     return settings;
-}
-
-void MyAudioProcessor::updateFlanger(const ChainSettings &chainSettings) {
-
-}
-
-ChainSettings MyAudioProcessor::updateFilters()
-{
-    auto chainSettings = getChainSettings(treeState);
-    updateFlanger(chainSettings);
-    return chainSettings;
 }
 
 //defining parameters of the plugin
@@ -62,22 +56,24 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
             juce::NormalisableRange<float>(-1.f, 1.f, 2.f, 1.f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("flanger depth", "Flanger Depth",
-            juce::NormalisableRange<float>(0.f, 50.f, 0.1f, 1.f), 0.f));
+            juce::NormalisableRange<float>(0.f, 25.f, 0.1f, 1.f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("flanger base", "Flanger Base",
-            juce::NormalisableRange<float>(0.f, 50.f, 0.1f, 1.f), 0.f));
+            juce::NormalisableRange<float>(0.f, 25.f, 0.1f, 1.f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("pitch shift", "Pitch Shift",
             juce::NormalisableRange<float>(0.1f, 4.f, 0.01f, 0.5f), 1.f));
 
     layout.add(std::make_unique<juce::AudioParameterBool>("robot", "Robot", false));
-    layout.add(std::make_unique<juce::AudioParameterBool>("FFT", "FFT", true));
+    layout.add(std::make_unique<juce::AudioParameterBool>("FFT", "FFT", false));
 
     return layout;
 }
 //listener for parameterID change
 void MyAudioProcessor::parameterChanged(const juce::String& parameterID, float newValue)
 {
+    chainSettings = getChainSettings(treeState);
+    flangerLFO.setFrequency (chainSettings.flangerLFO);
 }
 
 //==============================================================================
@@ -167,7 +163,7 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     fft[0].reset();
     fft[1].reset();
 
-    updateFilters();
+    //parameterChanged();
 }
 
 void MyAudioProcessor::releaseResources()
@@ -184,7 +180,6 @@ bool MyAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
-
     // This checks if the input layout matches the output layout
    #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
@@ -204,7 +199,6 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
     //=================================================================================
-    auto chainSettings = updateFilters();
     float factor = chainSettings.pitchShift;
     bool robot = chainSettings.robot;
     float* channelL = buffer.getWritePointer(0);
@@ -212,45 +206,40 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
         //delay line
-        for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-            float currentSample = buffer.getSample(channel, sample);
-            float processedSample = flangerEffect(channel, currentSample);
-            buffer.setSample(channel, sample, processedSample);
-        }
-
+        float sampleL = channelL[sample];
+        float sampleR = channelR[sample];
+        //flanger
+        channelL[sample] = flangerEffect(sampleL);
+        channelR[sample] = flangerEffect(sampleR);
         //fft
         if (chainSettings.FFT) {
-            float sampleL = channelL[sample];
-            float sampleR = channelR[sample];
+            sampleL = channelL[sample];
+            sampleR = channelR[sample];
             sampleL = fft[0].processSample(sampleL, factor * 0.3, robot);
             sampleR = fft[1].processSample(sampleR, factor, robot);
 
             channelL[sample] = sampleL;
             channelR[sample] = sampleR;
         }
-
-        //float processedSampleL = flangerEffect(0, channelL[sample]);
-        //float processedSampleR = flangerEffect(1, channelR[sample]);
-        //buffer.setSample(0, sample, processedSampleL);
-        //buffer.setSample(1, sample, processedSampleR);
     }
 }
 
-float MyAudioProcessor::flangerEffect(int channel, float currentSample) {
-    auto chainSettings = getChainSettings(treeState);
-    flangerLFO.setFrequency (chainSettings.flangerLFO);
-    float flangerDepth = chainSettings.flangerDepth;
-    float flangerRatio = chainSettings.flangerRatio;
-    float flangerInvert = chainSettings.flangerInvert;
+float MyAudioProcessor::flangerEffect(float currentSample) {
+    float depth = chainSettings.flangerDepth;
+    float ratio = chainSettings.flangerRatio;
+    float invert = chainSettings.flangerInvert;
+    float base = chainSettings.flangerBase;
     float lfoOutput = flangerLFO.processSample(0.0f);
-    float currentDelay = chainSettings.flangerBase + flangerDepth * lfoOutput;
-    //push sample onto delay line
-    flangerDelayLine.pushSample(channel, currentSample);
-    //retrieving a sample from delayline with delay
-    int currentDelayInSamples = static_cast<int>(currentDelay * getSampleRate() / 1000.0f);
-    float delayedSample = flangerDelayLine.popSample(channel, currentDelayInSamples, true) * (1.0 - flangerRatio);
 
-    float finalSample = flangerRatio * currentSample + delayedSample * flangerInvert;
+    float currentDelay = base + depth * lfoOutput;
+
+    //push sample onto delay line
+    flangerDelayLine.pushSample(0, currentSample);
+    //retrieving a sample from delayline with delay
+    float currentDelayInSamples = currentDelay * getSampleRate() / 1000.0f;
+    float delayedSample = flangerDelayLine.popSample(0, currentDelayInSamples, true) * (1.0 - ratio);
+
+    float finalSample = ratio * currentSample + delayedSample * invert;
     return finalSample;
 }
 
