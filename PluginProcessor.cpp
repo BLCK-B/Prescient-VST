@@ -2,6 +2,7 @@
 #include "PluginEditor.h"
 #include "CustomFFT.cpp"
 #include "FFTProcessor.cpp"
+#include "LPCeffect.cpp"
 //==============================================================================
 MyAudioProcessor::MyAudioProcessor()
     : AudioProcessor (BusesProperties()

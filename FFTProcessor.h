@@ -1,12 +1,7 @@
 #pragma once
-#include <juce_audio_processors/juce_audio_processors.h>
-#include <juce_dsp/juce_dsp.h>
 
-/**
-  STFT analysis and resynthesis of audio data.
-
-  Each channel should have its own FFTProcessor.
- */
+// STFT analysis and resynthesis of audio data.
+// Each channel should have its own FFTProcessor.
 class FFTProcessor
 {
 public:

@@ -1,8 +1,7 @@
 #include "FFTProcessor.h"
 
-FFTProcessor::FFTProcessor() :
-    fft(fftOrder),
-    window(fftSize + 1, juce::dsp::WindowingFunction<float>::WindowingMethod::hann, false)
+FFTProcessor::FFTProcessor() :  fft(fftOrder),
+                                window(fftSize + 1, juce::dsp::WindowingFunction<float>::WindowingMethod::hann, false)
 {
     // Note that the window is of length `fftSize + 1` because JUCE's windows
     // are symmetrical, which is wrong for overlap-add processing. To make the
@@ -31,11 +30,11 @@ float FFTProcessor::processSample(float sample, float factor, bool robot)
     float outputSample = outputFifo[pos];
     outputFifo[pos] = 0.0f;
     // Advance the FIFO index and wrap around if necessary.
-    pos += 1;
+    pos++;
     if (pos == fftSize)
         pos = 0;
     // Process the FFT frame once we've collected hopSize samples.
-    count += 1;
+    count++;
     if (count == hopSize) {
         count = 0;
         processFrame(factor, robot);
