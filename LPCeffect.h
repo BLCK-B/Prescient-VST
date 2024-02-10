@@ -8,7 +8,7 @@ public:
     LPCeffect();
     float sendSample(float sample, int channel);
     void overlapAdd();
-    float autocorrelation();
+    float autocorrelation(int channel);
 
 
 private:
@@ -17,11 +17,14 @@ private:
     const int windowSize = std::pow(2, 10); // 2^10 = 1024
     const int numChannels = 2;
     const int Nframes = 4;
+    const int frameSize = windowSize / Nframes;
+    const int modelOrder = 12;
     int index = 0;
 
     juce::AudioBuffer<float> inputBuffer;
     juce::AudioBuffer<float> frameBuffer;
     juce::AudioBuffer<float> overlapBuffer;
     juce::dsp::WindowingFunction<float> hannWindow;
+    std::vector<float> autocorrCoeffs;
 
 };
