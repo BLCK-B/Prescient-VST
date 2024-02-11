@@ -9,6 +9,7 @@ public:
     float sendSample(float sample, int channel);
     void overlapAdd();
     float autocorrelation(int channel);
+    void levinsonDurbin();
 
 
 private:
@@ -25,6 +26,6 @@ private:
     juce::AudioBuffer<float> frameBuffer;
     juce::AudioBuffer<float> overlapBuffer;
     juce::dsp::WindowingFunction<float> hannWindow;
-    std::vector<float> autocorrCoeffs;
+    std::vector<float> corrCoeff;
 
 };
