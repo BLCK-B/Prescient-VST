@@ -10,6 +10,7 @@ public:
     void overlapAdd();
     float autocorrelation(int channel);
     void levinsonDurbin();
+    void residuals();
 
 
 private:
@@ -28,4 +29,6 @@ private:
     juce::dsp::WindowingFunction<float> hannWindow;
     std::vector<float> corrCoeff;
 
+    std::vector<float> LPCcoeffs;
+    juce::AudioBuffer<float> filteredBuffer;
 };

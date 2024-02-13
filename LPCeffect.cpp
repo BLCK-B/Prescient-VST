@@ -89,11 +89,46 @@ void LPCeffect::levinsonDurbin() {
      *  a[1][1] a[1][2] a[1][3]
      *          a[2][2] a[2][3]
      *                  a[3][3]
-    */
-
-    for (int row = 1; row < modelOrder; ++row) {
-        for (int col = 1; col < modelOrder; ++col) {
-            printf("a[%d][%d] = %lf\n", row, col, a[row][col]);
+     *  formant frequency information (envelope)
+     *  sorting the coefficients for a filter column by column: */
+    for (int col = 1; col < modelOrder; ++col) {
+        for (int row = 1; row < modelOrder; ++row) {
+            LPCcoeffs.push_back(a[row][col]);
         }
     }
+    a.clear();
+    E.clear();
+    k.clear();
+    for (float coeff : LPCcoeffs) {
+        std::cout << coeff;
+    }
+}
+
+void LPCeffect::residuals() {
+    // filtering the OLA-ed buffer with all-pole filter from LPC coefficients
+
+    juce::AudioBuffer<float> tempBuffer;
+
+    for (int channel = 0; channel < numChannels; ++channel) {
+
+        for (int n = 1; n < modelOrder; ++n) {
+            float filtered = 0;
+            int cycle = 0;
+            for (float coeff : LPCcoeffs) {
+                if ((n - cycle) >= 0)
+                    filtered += coeff * tempBuffer.getSample(channel, n - cycle);
+                ++cycle;
+            }
+            filteredBuffer.setSample(channel, n - 1, filtered);
+        }
+    }
+    juce::AudioBuffer<float> residuals;
+    // subtracting the original OLA-ed and filtered signals to get residuals
+    for (int channel = 0; channel < numChannels; ++channel) {
+        for (int i = 0; i < frameSize; ++i) {
+            float difference = tempBuffer.getSample(channel, i) - filteredBuffer.getSample(channel, i);
+            residuals.setSample(channel, i, difference);
+        }
+    }
+
 }
