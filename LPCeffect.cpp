@@ -8,7 +8,7 @@ LPCeffect::LPCeffect() : inputBuffer(numChannels, windowSize),
 {
 }
 
-// add received sample to buffer, send to process once buffer full
+// add received sample to buffer, send to processing once buffer full
 float LPCeffect::sendSample(float sample, int channel)
 {
     inputBuffer.setSample(channel, index, sample);
@@ -26,28 +26,41 @@ void LPCeffect::overlapAdd()
 {
     // Nframes in each channel
     for (int channel = 0; channel < numChannels; ++channel) {
-        float* frameChPtr = inputBuffer.getWritePointer(channel);
+        float* frameChPtr = frameBuffer.getWritePointer(channel);
 
         for (int i = 0; i < Nframes; ++i) {
-            int startOfFrame = i / Nframes * windowSize;
             frameBuffer.clear();
+            int startOfFrame = i / Nframes * windowSize;
+            // copy a frame from inputBuffer to frameBuffer
             frameBuffer.copyFrom(channel, 0, inputBuffer, channel, startOfFrame, frameSize);
-            hannWindow.multiplyWithWindowingTable(frameChPtr, frameSize);
             autocorrelation(channel);
-            // add frames with overlap to overlapBuffer
-            // ...
+            // perform OLA one frame at a time
+            hannWindow.multiplyWithWindowingTable(frameChPtr, frameSize);
+            int startSample = 0;
+            if (i > 0)
+                startSample = i * frameSize - frameSize / 2;
+            overlapBuffer.addFrom(channel, startSample, frameBuffer, channel, 0, frameSize);
+            // after last frame append 0s until frameSize
+            if (i == Nframes - 1) {
+                for (int j = startSample + 1; j < frameSize; ++j) {
+                    overlapBuffer.setSample(channel, j, 0);
+                }
+            }
         }
     }
+    // calculate LPC coefficients from autocorrelation coefficients
+    levinsonDurbin();
+    // filter overlapBuffer with all-pole filter from LPC coefficients
+    residuals();
 }
 
-// calculate autocorrelation coefficients
+// calculate autocorrelation coefficients of a single frame
 float LPCeffect::autocorrelation(int channel)
 {
     corrCoeff.clear();
     // cycling lag "k" 0 up to modelOrder
     for (int k = 0; k < modelOrder; ++k) {
         float sumResult = 0;
-        // loop representing sum
         for (int n = 0; n < frameSize - 1 - k; ++n) {
             float sample = frameBuffer.getSample(channel, n);
             float lagSample = frameBuffer.getSample(channel, n + k);
@@ -56,7 +69,7 @@ float LPCeffect::autocorrelation(int channel)
         sumResult /= frameSize;
         corrCoeff.push_back(sumResult);
     }
-    // now we have R(0 - modelOrder) vector
+    // now we have a vector of coefficients R(0 - modelOrder)
 }
 
 // calculate filter parameters using this algorithm
@@ -66,23 +79,25 @@ void LPCeffect::levinsonDurbin() {
     std::vector<float> E (modelOrder);
     // two-dimensional vector because matrix
     std::vector<std::vector<float>> a;
+
+    // initialization with i = 1
     E[0] = corrCoeff[0];
-    for (int i = 1; i < modelOrder; ++i) {
-        // sum
+    k[1] = - corrCoeff[1] / E[0];
+    a[1][1] = k[1];
+    auto k2 = static_cast<float>(std::pow(k[1], 2));
+    E[1] = (1 - k2) * E[0];
+    // loop beginning with i = 2
+    for (int i = 2; i < modelOrder; ++i) {
         float sumResult = 0;
-        if (i > 1) {
-            for (int j = 1; j < i; ++j) {
-                sumResult += a[j][i - 1] * corrCoeff[i - j];
-            }
+        for (int j = 1; j < i; ++j) {
+            sumResult += a[j][i - 1] * corrCoeff[i - j];
         }
         k[i] = - (corrCoeff[i] + sumResult) / E[i - 1];
         a[i][i] = k[i];
-        if (i > 1) {
-            for (int j = 1; j < i; ++j) {
-                a[j][i] = a[j][i - 1] + k[i] * a[i - j][i - j];
-            }
+        for (int j = 1; j < i; ++j) {
+            a[j][i] = a[j][i - 1] + k[i] * a[i - j][i - j];
         }
-        auto k2 = static_cast<float>(std::pow(k[i], 2));
+        k2 = static_cast<float>(std::pow(k[i], 2));
         E[i] = (1 - k2) * E[i - 1];
     }
     /*  result in the form of
@@ -104,19 +119,15 @@ void LPCeffect::levinsonDurbin() {
     }
 }
 
+// filtering the OLA-ed buffer with all-pole filter from LPC coefficients
 void LPCeffect::residuals() {
-    // filtering the OLA-ed buffer with all-pole filter from LPC coefficients
-
-    juce::AudioBuffer<float> tempBuffer;
-
     for (int channel = 0; channel < numChannels; ++channel) {
-
         for (int n = 1; n < modelOrder; ++n) {
             float filtered = 0;
             int cycle = 0;
             for (float coeff : LPCcoeffs) {
                 if ((n - cycle) >= 0)
-                    filtered += coeff * tempBuffer.getSample(channel, n - cycle);
+                    filtered += coeff * overlapBuffer.getSample(channel, n - cycle);
                 ++cycle;
             }
             filteredBuffer.setSample(channel, n - 1, filtered);
@@ -126,9 +137,8 @@ void LPCeffect::residuals() {
     // subtracting the original OLA-ed and filtered signals to get residuals
     for (int channel = 0; channel < numChannels; ++channel) {
         for (int i = 0; i < frameSize; ++i) {
-            float difference = tempBuffer.getSample(channel, i) - filteredBuffer.getSample(channel, i);
+            float difference = overlapBuffer.getSample(channel, i) - filteredBuffer.getSample(channel, i);
             residuals.setSample(channel, i, difference);
         }
     }
-
 }
