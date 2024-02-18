@@ -7,15 +7,13 @@ class LPCeffect {
 public:
     LPCeffect();
     float sendSample(float sample, int channel);
-    void overlapAdd();
-    float autocorrelation(int channel);
+    void doLPC();
+    void autocorrelation(int channel);
     void levinsonDurbin();
     void residuals();
 
 
 private:
-    // 30 ms worth of samples in given sample rate
-    //const int windowSize = std::round(0.030 * getSampleRate());
     const int windowSize = std::pow(2, 10); // 2^10 = 1024
     const int numChannels = 2;
     const int Nframes = 4;
@@ -28,7 +26,7 @@ private:
     juce::AudioBuffer<float> overlapBuffer;
     juce::dsp::WindowingFunction<float> hannWindow;
     std::vector<float> corrCoeff;
-
     std::vector<float> LPCcoeffs;
     juce::AudioBuffer<float> filteredBuffer;
+
 };

@@ -3,6 +3,7 @@
 #include "CustomFFT.cpp"
 #include "FFTProcessor.cpp"
 #include "LPCeffect.cpp"
+#include "LPCtests.cpp"
 //==============================================================================
 MyAudioProcessor::MyAudioProcessor()
     : AudioProcessor (BusesProperties()
@@ -164,7 +165,9 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     fft[0].reset();
     fft[1].reset();
 
-    //parameterChanged();
+    LPCtests lpCtests;
+    //lpCtests.autocorrelationTest();
+    lpCtests.levinsonDurbinTest();
 }
 
 void MyAudioProcessor::releaseResources()
