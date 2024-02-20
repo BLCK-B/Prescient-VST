@@ -92,7 +92,8 @@ void LPCeffect::levinsonDurbin()
     std::vector<float> k (modelOrder);
     std::vector<float> E (modelOrder);
     // two-dimensional vector because matrix
-    std::vector<std::vector<float>> a;
+    // j = row, i = column
+    std::vector<std::vector<float>> a (modelOrder, std::vector<float>(modelOrder));
 
     // initialization with i = 1
     E[0] = corrCoeff[0];
@@ -100,6 +101,7 @@ void LPCeffect::levinsonDurbin()
     a[1][1] = k[1];
     auto k2 = static_cast<float>(std::pow(k[1], 2));
     E[1] = (1 - k2) * E[0];
+
     // loop beginning with i = 2
     for (int i = 2; i < modelOrder; ++i) {
         float sumResult = 0;
@@ -122,7 +124,8 @@ void LPCeffect::levinsonDurbin()
      *  sorting the coefficients for a filter column by column: */
     for (int col = 1; col < modelOrder; ++col) {
         for (int row = 1; row < modelOrder; ++row) {
-            LPCcoeffs.push_back(a[row][col]);
+            if (a[row][col] != 0)
+                LPCcoeffs.push_back(a[row][col]);
         }
     }
     a.clear();

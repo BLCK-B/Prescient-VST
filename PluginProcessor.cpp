@@ -167,7 +167,8 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     LPCtests lpCtests;
     //lpCtests.autocorrelationTest();
-    lpCtests.levinsonDurbinTest();
+    //lpCtests.levinsonDurbinTest();
+    lpCtests.OLAtest();
 }
 
 void MyAudioProcessor::releaseResources()
