@@ -166,9 +166,9 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     fft[1].reset();
 
     LPCtests lpCtests;
+    //lpCtests.OLAtest();
     //lpCtests.autocorrelationTest();
     //lpCtests.levinsonDurbinTest();
-    lpCtests.OLAtest();
 }
 
 void MyAudioProcessor::releaseResources()

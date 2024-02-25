@@ -28,25 +28,25 @@ void LPCeffect::doLPC()
     // Nframes in each channel
     for (int channel = 0; channel < numChannels; ++channel) {
         float* frameChPtr = frameBuffer.getWritePointer(channel);
+        // initialize overlapBuffer with 0s
+        for (int j = 0; j < windowSize; ++j) {
+            overlapBuffer.setSample(channel, j, 0);
+        }
 
         for (int i = 0; i < Nframes; ++i) {
             frameBuffer.clear();
-            int startOfFrame = i / Nframes * windowSize;
+            int startOfFrame = i * windowSize / Nframes ;
             // copy a frame from inputBuffer to frameBuffer
             frameBuffer.copyFrom(channel, 0, inputBuffer, channel, startOfFrame, frameSize);
             autocorrelation(channel);
 
             // perform OLA one frame at a time
             hannWindow.multiplyWithWindowingTable(frameChPtr, frameSize);
-            int startSample = 0;
-            if (i > 0)
-                startSample = i * frameSize - frameSize / 2;
-            overlapBuffer.addFrom(channel, startSample, frameBuffer, channel, 0, frameSize);
-            // after last frame append 0s until frameSize
-            if (i == Nframes - 1) {
-                for (int j = startSample + 1; j < frameSize; ++j) {
-                    overlapBuffer.setSample(channel, j, 0);
-                }
+            if (i == 0)
+                overlapBuffer.addFrom(channel, 0, frameBuffer, channel, 0, frameSize);
+            else {
+                int startSample = i * frameSize - (frameSize / 2) * i;
+                overlapBuffer.addFrom(channel, startSample, frameBuffer, channel, 0, frameSize);
             }
         }
     }

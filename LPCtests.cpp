@@ -17,44 +17,57 @@ class LPCtests {
         juce::AudioBuffer<float> frameBuffer(1, frameSize);
         juce::dsp::WindowingFunction<float> hannWindow(frameSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann);
         // input emulation
-        for (int i = 1; i < 999; ++i) {
-            int sample = i;
+        for (int s = 1; s < 999; ++s) {
+            int sample = s;
 
             // logic
             inputBuffer.setSample(channel, index, sample);
             ++index;
-            if (index == frameSize) {
+            if (index == windowSize) {
                 index = 0;
+                // inputBuffer: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
                 // Nframes in each channel
                 for (int channel = 0; channel < 1; ++channel) {
                     float* frameChPtr = frameBuffer.getWritePointer(channel);
+                    // initialize overlapBuffer with 0s
+                    for (int j = 0; j < windowSize; ++j) {
+                        overlapBuffer.setSample(channel, j, 0);
+                    }
 
                     for (int i = 0; i < Nframes; ++i) {
                         frameBuffer.clear();
-                        int startOfFrame = i / Nframes * windowSize;
+                        int startOfFrame = i * windowSize / Nframes ;
                         // copy a frame from inputBuffer to frameBuffer
                         frameBuffer.copyFrom(channel, 0, inputBuffer, channel, startOfFrame, frameSize);
                         // perform OLA one frame at a time
                         hannWindow.multiplyWithWindowingTable(frameChPtr, frameSize);
-                        int startSample = 0;
-                        if (i > 0)
-                            startSample = i * frameSize - frameSize / 2;
-                        overlapBuffer.addFrom(channel, startSample, frameBuffer, channel, 0, frameSize);
-                        // after last frame append 0s until frameSize
-                        if (i == Nframes - 1) {
-                            for (int j = startSample + 1; j < frameSize; ++j) {
-                                overlapBuffer.setSample(channel, j, 0);
-                            }
+                        /* frame values:
+                            0 1.65836 6.51246 8.68328 4.1459 0
+                            0 6.63344 19.5374 21.7082 9.12097 0
+                            0 11.6085 32.5623 34.7331 14.0961 0
+                            0 16.5836 45.5872 47.758 19.0711 0
+                        */
+                        if (i == 0)
+                            overlapBuffer.addFrom(channel, 0, frameBuffer, channel, 0, frameSize);
+                        else {
+                            int startSample = i * frameSize - (frameSize / 2) * i;
+                            overlapBuffer.addFrom(channel, startSample, frameBuffer, channel, 0, frameSize);
                         }
                     }
                 }
 
                 // verification
-                for (int g = 0; g < overlapBuffer.getNumSamples(); ++g) {
+                bool pass = true;
+                for (int g = 0; g < windowSize; ++g) {
+                    std::array<float, 24> expected = {0,1.66,6.51,8.68,10.78,19.54,21.71,20.73,32.56,34.73,30.67,45.59,47.76,19.07,0,0,0,0,0,0,0,0,0,0};
                     float val = overlapBuffer.getSample(channel, g);
-                    std::cout << val << " ";
+                    if (std::abs(val - expected[g]) > 0.01)
+                        pass = false;
                 }
-
+                if (pass)
+                    std::cout << "PASSED OLA test\n";
+                else
+                    std::cout << "DID NOT PASS OLA test\n";
                 break;
             }
         }
@@ -104,9 +117,9 @@ class LPCtests {
                 pass = false;
         }
         if (pass)
-            std::cout << "PASSED autocorrelation test";
+            std::cout << "PASSED autocorrelation test\n";
         else
-            std::cout << "DID NOT PASS autocorrelation test";
+            std::cout << "DID NOT PASS autocorrelation test\n";
     }
 
     void levinsonDurbinTest()
@@ -172,14 +185,13 @@ class LPCtests {
         bool pass = true;
         std::array<float, 6> expected = {-0.7, -0.686, -0.0196, -0.67, 0.59, -0.87};
         for (int i = 0; i < LPCcoeffs.size(); ++i) {
-            std::cout << LPCcoeffs[i] << "   " << expected[i] << "\n";
             if (std::abs(LPCcoeffs[i] - expected[i]) > 0.01)
                 pass = false;
         }
         if (pass)
-            std::cout << "PASSED levinsonDurbin test";
+            std::cout << "PASSED levinsonDurbin test\n";
         else
-            std::cout << "DID NOT PASS levinsonDurbin test";
+            std::cout << "DID NOT PASS levinsonDurbin test\n";
     }
 
     void residualsTest() {
