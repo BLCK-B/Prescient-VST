@@ -197,35 +197,51 @@ class LPCtests {
     void residualsTest() {
         // data setup
         const int modelOrder = 4;
-        const int frameSize = 16;
+        const int windowSize = 24;
         std::array<float, 6> LPCcoeffs = {-0.7, -0.68, -0.02, -0.67, 0.59, -0.87};
-        juce::AudioBuffer<float> overlapBuffer(1, frameSize);
-        juce::AudioBuffer<float> filteredBuffer(1, frameSize);
+        std::array<float, 24> OLAbufferData = {0,1.66,6.51,8.68,10.78,19.54,21.71,20.73,32.56,34.73,30.67,45.59,47.76,19.07,0,0,0,0,0,0,0,0,0,0};
+        juce::AudioBuffer<float> overlapBuffer(1, windowSize);
+        juce::AudioBuffer<float> filteredBuffer(1, windowSize);
+        for (int i = 0; i < OLAbufferData.size(); ++i)
+            overlapBuffer.setSample(0, i, OLAbufferData[i]);
 
         // logic
+        // initialize filteredBuffer with 0s
+        for (int j = 0; j < windowSize; ++j) {
+            filteredBuffer.setSample(channel, j, 0);
+        }
         for (int channel = 0; channel < 1; ++channel) {
-            for (int n = 1; n < modelOrder; ++n) {
+            for (int n = 1; n < windowSize; ++n) {
                 float filtered = 0;
-                int cycle = 0;
-                for (float coeff : LPCcoeffs) {
-                    if ((n - cycle) >= 0)
-                        filtered += coeff * overlapBuffer.getSample(channel, n - cycle);
-                    ++cycle;
+                for (int k = 0; k < modelOrder; ++k) {
+                    if (n - k >= 0)
+                        filtered += LPCcoeffs[k] * overlapBuffer.getSample(channel, n - k) + overlapBuffer.getSample(channel, n);
                 }
-                filteredBuffer.setSample(channel, n - 1, filtered);
+                filteredBuffer.setSample(channel, n, filtered);
             }
         }
-        juce::AudioBuffer<float> residuals;
-        // subtracting the original OLA-ed and filtered signals to get residuals
+
         for (int channel = 0; channel < 1; ++channel) {
-            for (int i = 0; i < frameSize; ++i) {
-                float difference = overlapBuffer.getSample(channel, i) - filteredBuffer.getSample(channel, i);
+            for (int i = 0; i < windowSize; ++i) {
+                std::cout << overlapBuffer.getSample(channel, i) << " -> " << filteredBuffer.getSample(channel, i) << "\n";
+            }
+        }
+        //TODO: residuals likely unnecessary?
+        juce::AudioBuffer<float> residuals(1, windowSize);
+        // subtracting the original OLA and filtered OLA signals to get residuals
+        for (int channel = 0; channel < 1; ++channel) {
+            for (int i = 0; i < windowSize; ++i) {
+                float difference = abs(overlapBuffer.getSample(channel, i) - filteredBuffer.getSample(channel, i));
                 residuals.setSample(channel, i, difference);
             }
         }
 
         // verification
-
+        for (int channel = 0; channel < 1; ++channel) {
+            for (int i = 0; i < windowSize; ++i) {
+                std::cout << residuals.getSample(channel, i) << " ";
+            }
+        }
     }
 
 };
