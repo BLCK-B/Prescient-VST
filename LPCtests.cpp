@@ -2,8 +2,6 @@
 // every result value is reached with pen & paper and other tools when applicable
 class LPCtests {
 
-    const int channel = 0;
-
     public:
 
     void OLAtest() {
@@ -21,38 +19,36 @@ class LPCtests {
             int sample = s;
 
             // logic
-            inputBuffer.setSample(channel, index, sample);
+            inputBuffer.setSample(0, index, sample);
             ++index;
             if (index == windowSize) {
                 index = 0;
                 // inputBuffer: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
                 // Nframes in each channel
-                for (int channel = 0; channel < 1; ++channel) {
-                    float* frameChPtr = frameBuffer.getWritePointer(channel);
-                    // initialize overlapBuffer with 0s
-                    for (int j = 0; j < windowSize; ++j) {
-                        overlapBuffer.setSample(channel, j, 0);
-                    }
+                float* frameChPtr = frameBuffer.getWritePointer(0);
+                // initialize overlapBuffer with 0s
+                for (int j = 0; j < windowSize; ++j) {
+                    overlapBuffer.setSample(0, j, 0);
+                }
 
-                    for (int i = 0; i < Nframes; ++i) {
-                        frameBuffer.clear();
-                        int startOfFrame = i * windowSize / Nframes ;
-                        // copy a frame from inputBuffer to frameBuffer
-                        frameBuffer.copyFrom(channel, 0, inputBuffer, channel, startOfFrame, frameSize);
-                        // perform OLA one frame at a time
-                        hannWindow.multiplyWithWindowingTable(frameChPtr, frameSize);
-                        /* frame values:
-                            0 1.65836 6.51246 8.68328 4.1459 0
-                            0 6.63344 19.5374 21.7082 9.12097 0
-                            0 11.6085 32.5623 34.7331 14.0961 0
-                            0 16.5836 45.5872 47.758 19.0711 0
-                        */
-                        if (i == 0)
-                            overlapBuffer.addFrom(channel, 0, frameBuffer, channel, 0, frameSize);
-                        else {
-                            int startSample = i * frameSize - (frameSize / 2) * i;
-                            overlapBuffer.addFrom(channel, startSample, frameBuffer, channel, 0, frameSize);
-                        }
+                for (int i = 0; i < Nframes; ++i) {
+                    frameBuffer.clear();
+                    int startOfFrame = i * windowSize / Nframes ;
+                    // copy a frame from inputBuffer to frameBuffer
+                    frameBuffer.copyFrom(0, 0, inputBuffer, 0, startOfFrame, frameSize);
+                    // perform OLA one frame at a time
+                    hannWindow.multiplyWithWindowingTable(frameChPtr, frameSize);
+                    /* frame values:
+                        0 1.65836 6.51246 8.68328 4.1459 0
+                        0 6.63344 19.5374 21.7082 9.12097 0
+                        0 11.6085 32.5623 34.7331 14.0961 0
+                        0 16.5836 45.5872 47.758 19.0711 0
+                    */
+                    if (i == 0)
+                        overlapBuffer.addFrom(0, 0, frameBuffer, 0, 0, frameSize);
+                    else {
+                        int startSample = i * frameSize - (frameSize / 2) * i;
+                        overlapBuffer.addFrom(0, startSample, frameBuffer, 0, 0, frameSize);
                     }
                 }
 
@@ -60,7 +56,7 @@ class LPCtests {
                 bool pass = true;
                 for (int g = 0; g < windowSize; ++g) {
                     std::array<float, 24> expected = {0,1.66,6.51,8.68,10.78,19.54,21.71,20.73,32.56,34.73,30.67,45.59,47.76,19.07,0,0,0,0,0,0,0,0,0,0};
-                    float val = overlapBuffer.getSample(channel, g);
+                    float val = overlapBuffer.getSample(0, g);
                     if (std::abs(val - expected[g]) > 0.01)
                         pass = false;
                 }
@@ -81,29 +77,28 @@ class LPCtests {
         juce::AudioBuffer<float> frameBuffer(1, frameSize);
         std::vector<float> corrCoeff;
         for (int i = 0; i < frameSize; ++i) {
-            frameBuffer.setSample(channel, i, input[i]);
+            frameBuffer.setSample(0, i, input[i]);
         }
 
         // logic
-        corrCoeff.clear();
         // coefficients go up to frameSize - 1
         // denominator and mean remain the same
         float denominator = 0;
         float mean = 0;
         for (int i = 0; i < frameSize; ++i) {
-            mean += frameBuffer.getSample(channel, i);
+            mean += frameBuffer.getSample(0, i);
         }
         mean /= frameSize;
         for (int n = 0; n < frameSize; ++n) {
-            float sample = frameBuffer.getSample(channel, n);
+            float sample = frameBuffer.getSample(0, n);
             denominator += std::pow((sample - mean), 2);
         }
 
         for (int k = 0; k < frameSize; ++k) {
             float numerator = 0;
             for (int n = 0; n < frameSize - k; ++n) {
-                float sample = frameBuffer.getSample(channel, n);
-                float lagSample = frameBuffer.getSample(channel, n + k);
+                float sample = frameBuffer.getSample(0, n);
+                float lagSample = frameBuffer.getSample(0, n + k);
                 numerator += (sample - mean) * (lagSample - mean);
             }
             corrCoeff.push_back(numerator / denominator);
@@ -208,23 +203,19 @@ class LPCtests {
         // logic
         // initialize filteredBuffer with 0s
         for (int j = 0; j < windowSize; ++j) {
-            filteredBuffer.setSample(channel, j, 0);
+            filteredBuffer.setSample(0, j, 0);
         }
-        for (int channel = 0; channel < 1; ++channel) {
-            for (int n = 1; n < windowSize; ++n) {
-                float filtered = 0;
-                for (int k = 0; k < modelOrder; ++k) {
-                    if (n - k >= 0)
-                        filtered += LPCcoeffs[k] * overlapBuffer.getSample(channel, n - k) + overlapBuffer.getSample(channel, n);
-                }
-                filteredBuffer.setSample(channel, n, filtered);
+        for (int n = 1; n < windowSize; ++n) {
+            float filtered = 0;
+            for (int k = 0; k < modelOrder; ++k) {
+                if (n - k >= 0)
+                    filtered += LPCcoeffs[k] * overlapBuffer.getSample(0, n - k) + overlapBuffer.getSample(0, n);
             }
+            filteredBuffer.setSample(0, n, filtered);
         }
 
-        for (int channel = 0; channel < 1; ++channel) {
-            for (int i = 0; i < windowSize; ++i) {
-                std::cout << overlapBuffer.getSample(channel, i) << " -> " << filteredBuffer.getSample(channel, i) << "\n";
-            }
+        for (int i = 0; i < windowSize; ++i) {
+            std::cout << overlapBuffer.getSample(0, i) << " -> " << filteredBuffer.getSample(0, i) << "\n";
         }
         //TODO: residuals likely unnecessary?
         juce::AudioBuffer<float> residuals(1, windowSize);
@@ -237,10 +228,8 @@ class LPCtests {
         }
 
         // verification
-        for (int channel = 0; channel < 1; ++channel) {
-            for (int i = 0; i < windowSize; ++i) {
-                std::cout << residuals.getSample(channel, i) << " ";
-            }
+        for (int i = 0; i < windowSize; ++i) {
+            std::cout << residuals.getSample(0, i) << " ";
         }
     }
 

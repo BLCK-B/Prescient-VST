@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 #include "FFTProcessor.h"
+#include "LPCeffect.h"
 
 struct ChainSettings {
     float flangerRatio {0}, flangerLFO {0}, flangerInvert {0}, flangerDepth {0}, flangerBase {0}, pitchShift {0};
@@ -72,7 +73,8 @@ private:
 
     ChainSettings chainSettings;
 
-    FFTProcessor fft[9];
+    FFTProcessor fft[2];
+    LPCeffect lpcEffect[2];
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MyAudioProcessor)
 };

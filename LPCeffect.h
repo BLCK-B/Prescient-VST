@@ -6,16 +6,16 @@
 class LPCeffect {
 public:
     LPCeffect();
-    float sendSample(float sample, int channel);
-    void doLPC();
-    void autocorrelation(int channel);
-    void levinsonDurbin();
-    void residuals();
-
+    float sendSample(float sample);
 
 private:
+    void doLPC();
+    void autocorrelation();
+    void levinsonDurbin(int startS);
+    void residuals();
+
     const int windowSize = std::pow(2, 10); // 2^10 = 1024
-    const int numChannels = 2;
+    const int numChannels = 1;
     const int Nframes = 4;
     const int frameSize = windowSize / Nframes;
     const int modelOrder = 12;

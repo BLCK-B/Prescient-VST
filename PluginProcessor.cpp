@@ -165,11 +165,11 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     fft[0].reset();
     fft[1].reset();
 
-    LPCtests lpCtests;
+    //LPCtests lpCtests;
     //lpCtests.OLAtest();
     //lpCtests.autocorrelationTest();
     //lpCtests.levinsonDurbinTest();
-    lpCtests.residualsTest();
+    //lpCtests.residualsTest();
 }
 
 void MyAudioProcessor::releaseResources()
@@ -211,13 +211,13 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     float* channelR = buffer.getWritePointer(1);
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
-        //delay line
+        // delay line
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
-        //flanger
+        // flanger
         channelL[sample] = flangerEffect(sampleL);
         channelR[sample] = flangerEffect(sampleR);
-        //fft
+        // fft
         if (chainSettings.FFT) {
             sampleL = channelL[sample];
             sampleR = channelR[sample];
@@ -227,6 +227,13 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             channelL[sample] = sampleL;
             channelR[sample] = sampleR;
         }
+        // LPC
+        sampleL = sample;
+        sampleR = sample;
+        sampleL = lpcEffect[0].sendSample(sampleL);
+        sampleR = lpcEffect[1].sendSample(sampleR);
+        //channelL[sample] = sampleL;
+        //channelR[sample] = sampleR;
     }
 }
 
@@ -239,9 +246,9 @@ float MyAudioProcessor::flangerEffect(float currentSample) {
 
     float currentDelay = base + depth * lfoOutput;
 
-    //push sample onto delay line
+    // push sample onto delay line
     flangerDelayLine.pushSample(0, currentSample);
-    //retrieving a sample from delayline with delay
+    // retrieving a sample from delayline with delay
     float currentDelayInSamples = currentDelay * getSampleRate() / 1000.0f;
     float delayedSample = flangerDelayLine.popSample(0, currentDelayInSamples, true) * (1.0 - ratio);
 
@@ -263,8 +270,8 @@ juce::AudioProcessorEditor* MyAudioProcessor::createEditor()
 }
 
 //==============================================================================
-//storing parameters in memory block
-//destination data from DAW
+// storing parameters in memory block
+// destination data from DAW
 void MyAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     juce::ignoreUnused (destData);
