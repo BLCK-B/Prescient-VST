@@ -215,8 +215,8 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
         // flanger
-        channelL[sample] = flangerEffect(sampleL);
-        channelR[sample] = flangerEffect(sampleR);
+        //channelL[sample] = flangerEffect(sampleL);
+        //channelR[sample] = flangerEffect(sampleR);
         // fft
         if (chainSettings.FFT) {
             sampleL = channelL[sample];
@@ -228,12 +228,19 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             channelR[sample] = sampleR;
         }
         // LPC
-        sampleL = sample;
-        sampleR = sample;
+        sampleL = channelL[sample];
+        sampleR = channelR[sample];
+
+        //sampleL = sampleR = rand() % 20;
+        //std::cout<<"orig: "<<sampleL;
+
         sampleL = lpcEffect[0].sendSample(sampleL);
         sampleR = lpcEffect[1].sendSample(sampleR);
-        //channelL[sample] = sampleL;
-        //channelR[sample] = sampleR;
+
+        //std::cout<<" out: "<<sampleL<<"\n";
+
+        channelL[sample] = sampleL;
+        channelR[sample] = sampleR;
     }
 }
 

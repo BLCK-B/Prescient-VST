@@ -4,8 +4,13 @@
 LPCeffect::LPCeffect() : inputBuffer(numChannels, windowSize),
                          frameBuffer(numChannels, frameSize),
                          overlapBuffer(numChannels, windowSize),
-                         hannWindow(frameSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann)
+                         hannWindow(frameSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann),
+                         filteredBuffer(numChannels, windowSize)
 {
+    // initialize filteredBuffer with 0s
+    for (int j = 0; j < windowSize; ++j) {
+        filteredBuffer.setSample(0, j, 0);
+    }
 }
 
 // add received sample to buffer, send to processing once buffer full
@@ -17,18 +22,20 @@ float LPCeffect::sendSample(float sample)
         index = 0;
         doLPC();
     }
-    return 0;
-    /*if (filteredBuffer.getSample(channel, index) == NULL)
+    float finalSample = filteredBuffer.getSample(0, index);
+    if (abs(finalSample) > 100)
+        finalSample = 0;
+    if (finalSample == NULL)
         return 0;
     else
-        return filteredBuffer.getSample(channel, index);*/
+        return filteredBuffer.getSample(0, index);
 }
 
 // split into frames > R coeff > hann > OLA > LPC coeffs > residuals
 void LPCeffect::doLPC()
 {
     //TODO: OLA may not be necessary *within* a window
-    std::cout << "doLPC\n";
+
     // Nframes in each channel
     float* frameChPtr = frameBuffer.getWritePointer(0);
     // initialize overlapBuffer with 0s
@@ -65,7 +72,6 @@ void LPCeffect::doLPC()
 // calculate autocorrelation coefficients of a single frame
 void LPCeffect::autocorrelation() //TODO: needed also R(0) = 1?
 {
-    std::cout << "autocorrelation\n";
     // coefficients go up to frameSize - 1, but since levinson needs only modelOrder: cycling lag "k" 0 up to modelOrder
     // denominator and mean remain the same
     float denominator = 0;
@@ -93,7 +99,6 @@ void LPCeffect::autocorrelation() //TODO: needed also R(0) = 1?
 // calculate filter parameters using this algorithm
 void LPCeffect::levinsonDurbin(int startS)
 {
-    std::cout << "levinson\n";
     // levinson durbin algorithm
     std::vector<float> k (modelOrder);
     std::vector<float> E (modelOrder);
@@ -142,23 +147,15 @@ void LPCeffect::levinsonDurbin(int startS)
 // filtering the OLA-ed buffer with all-pole filter from LPC coefficients
 void LPCeffect::residuals()
 {
-    for (int x = 0; x < LPCcoeffs.size(); ++x) {
-        std::cout<<LPCcoeffs[x]<<"\n";
-    }
-
-    // initialize filteredBuffer with 0s
-    for (int j = 0; j < windowSize; ++j) {
-        filteredBuffer.setSample(0, j, 0);
-    }
-
+    filteredBuffer.clear();
     for (int n = 1; n < windowSize; ++n) {
         float filtered = 0;
         for (int k = 0; k < modelOrder; ++k) {
             if (n - k >= 0)
                 filtered += LPCcoeffs[k] * overlapBuffer.getSample(0, n - k) + overlapBuffer.getSample(0, n);
         }
-        std::cout<<"filtered: "<<filtered<<"\n";
         filteredBuffer.setSample(0, n, filtered);
+        //filteredBuffer.setSample(0,n,overlapBuffer.getSample(0, n));
     }
     /*juce::AudioBuffer<float> residuals(numChannels, windowSize);
     // subtracting the original OLA-ed and filtered signals to get residuals
