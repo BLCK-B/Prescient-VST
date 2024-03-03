@@ -231,13 +231,13 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         sampleL = channelL[sample];
         sampleR = channelR[sample];
 
-        //sampleL = sampleR = rand() % 20;
-        //std::cout<<"orig: "<<sampleL;
+        sampleL = sampleR = rand() % 20;
+        std::cout<<"orig: "<<sampleL;
 
         sampleL = lpcEffect[0].sendSample(sampleL);
         sampleR = lpcEffect[1].sendSample(sampleR);
 
-        //std::cout<<" out: "<<sampleL<<"\n";
+        std::cout<<" out: "<<sampleL<<"\n";
 
         channelL[sample] = sampleL;
         channelR[sample] = sampleR;

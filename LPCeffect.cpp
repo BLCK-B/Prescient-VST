@@ -147,14 +147,26 @@ void LPCeffect::levinsonDurbin(int startS)
 // filtering the OLA-ed buffer with all-pole filter from LPC coefficients
 void LPCeffect::residuals()
 {
+    std::vector<float> previousOutput(modelOrder);
+    for (int n = 0; n <= modelOrder; ++n) {
+        previousOutput.push_back(0);
+    }
+
     filteredBuffer.clear();
-    for (int n = 1; n < windowSize; ++n) {
-        float filtered = 0;
-        for (int k = 0; k < modelOrder; ++k) {
-            if (n - k >= 0)
-                filtered += LPCcoeffs[k] * overlapBuffer.getSample(0, n - k) + overlapBuffer.getSample(0, n);
+    for (int n = 0; n < windowSize; ++n) {
+        float filtered = overlapBuffer.getSample(0, n);
+        for (int i = 0; i < modelOrder; ++i) {
+            filtered += LPCcoeffs[i] * previousOutput[i];
         }
+
+        for (int i = 11; i > 0; i--) {
+            previousOutput[i] = previousOutput[i - 1];
+        }
+        previousOutput[0] = filtered;
+
         filteredBuffer.setSample(0, n, filtered);
+
+        // without filter
         //filteredBuffer.setSample(0,n,overlapBuffer.getSample(0, n));
     }
     /*juce::AudioBuffer<float> residuals(numChannels, windowSize);
