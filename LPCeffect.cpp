@@ -147,34 +147,58 @@ void LPCeffect::levinsonDurbin(int startS)
 // filtering the OLA-ed buffer with all-pole filter from LPC coefficients
 void LPCeffect::residuals()
 {
+    filteredBuffer.clear();
+
+    // white noise carrier signal
+    // TODO: carrier needs be modulated by gain?
+    for (int n = 0; n < windowSize; ++n) {
+        //float rnd = (float) (rand()) / (float) (rand());
+        //if (rnd > 10)
+        //    rnd /= 10;
+        float rnd = rand() % 1000;
+        rnd /= 1000;
+        overlapBuffer.setSample(0, n, rnd);
+    }
+
+
     std::vector<float> previousOutput(modelOrder);
     for (int n = 0; n <= modelOrder; ++n) {
         previousOutput.push_back(0);
     }
-
-    filteredBuffer.clear();
     for (int n = 0; n < windowSize; ++n) {
-        float filtered = overlapBuffer.getSample(0, n);
+        float sum = 0;
         for (int i = 0; i < modelOrder; ++i) {
-            filtered += LPCcoeffs[i] * previousOutput[i];
+            // modelOrder (12) previous samples required
+            sum += LPCcoeffs[i] * previousOutput[modelOrder - i];
         }
-
-        for (int i = 11; i > 0; i--) {
+        for (int i = modelOrder; i > 0; i--) {
             previousOutput[i] = previousOutput[i - 1];
         }
-        previousOutput[0] = filtered;
+        float input = overlapBuffer.getSample(0, n);
+        float output = input + sum;
+        previousOutput[0] = output;
+        filteredBuffer.setSample(0, n, output);
+    }
 
-        filteredBuffer.setSample(0, n, filtered);
-
+    // residual/filter equation page 372
+    /*for (int n = 0; n < windowSize; ++n) {
+        float sum = 0;
+        //LPCcoeffs[0] = 1;
+        for (int m = 0; m < LPCcoeffs.size(); ++m) {
+            if (n - m >= 0)
+                sum += -LPCcoeffs[m] * overlapBuffer.getSample(0, n - m);
+            //else
+                //sum += -LPCcoeffs[m] * overlapBuffer.getSample(0, 0);
+        }
+        //sum -= overlapBuffer.getSample(0, n);
+        filteredBuffer.setSample(0, n, sum);
         // without filter
         //filteredBuffer.setSample(0,n,overlapBuffer.getSample(0, n));
-    }
-    /*juce::AudioBuffer<float> residuals(numChannels, windowSize);
-    // subtracting the original OLA-ed and filtered signals to get residuals
-    for (int channel = 0; channel < numChannels; ++channel) {
-        for (int i = 0; i < windowSize; ++i) {
-            float difference = overlapBuffer.getSample(channel, i) - filteredBuffer.getSample(channel, i);
-            residuals.setSample(channel, i, difference);
-        }
     }*/
+
+}
+
+// filter white noise or other carrier with all-pole/all-zero filter from LPC coefficients
+void LPCeffect::filterCarrier() {
+
 }

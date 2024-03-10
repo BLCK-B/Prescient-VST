@@ -13,6 +13,7 @@ private:
     void autocorrelation();
     void levinsonDurbin(int startS);
     void residuals();
+    void filterCarrier();
 
     const int windowSize = std::pow(2, 10); // 2^10 = 1024
     const int numChannels = 1;
