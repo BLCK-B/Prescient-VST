@@ -13,6 +13,20 @@ LPCeffect::LPCeffect() : inputBuffer(numChannels, windowSize),
     }
 }
 
+/* numbers overview
+   modelOrder = 12, windowSize = 1024, Nframes = 4
+   autocorr coeffs ... Nframes * modelOrder = 48
+   LPC coeffs ... Nframes * modelOrder^2 / 2 ~ 264
+   1024 samples ... 264 coeffs ... 3.8 to 1
+ */
+
+/* numbers overview
+   modelOrder = 6, windowSize = 240, Nframes = 2
+   frame.. autocorr coeffs = 6
+   frame.. LPC coeffs = 6
+   frame.. 120 samples ... 6+1 () coeffs ... 6.6 to 1
+ */
+
 // add received sample to buffer, send to processing once buffer full
 float LPCeffect::sendSample(float sample)
 {
@@ -22,19 +36,20 @@ float LPCeffect::sendSample(float sample)
         index = 0;
         doLPC();
     }
-    float finalSample = filteredBuffer.getSample(0, index);
-    if (abs(finalSample) > 100)
-        finalSample = 0;
-    if (finalSample == NULL)
-        return 0;
-    else
-        return filteredBuffer.getSample(0, index);
+
+    float output = filteredBuffer.getSample(0, index);
+
+    // debug logging
+    //if (output != 0)
+      //  logValues(sample, output);
+
+    return output == NULL ? 0 : output;
 }
 
 // split into frames > R coeff > hann > OLA > LPC coeffs > residuals
 void LPCeffect::doLPC()
 {
-    //TODO: OLA may not be necessary *within* a window
+    //TODO: OLA may not be necessary?
 
     // Nframes in each channel
     float* frameChPtr = frameBuffer.getWritePointer(0);
@@ -62,6 +77,19 @@ void LPCeffect::doLPC()
             overlapBuffer.addFrom(0, startSample, frameBuffer, 0, 0, frameSize);
         }
     }
+
+    // autocorr coeffs printout
+    /*for (float bbb : corrCoeff) {
+        std::cout << bbb << " ";
+    }
+    std::cout << "\n\n";*/
+
+    // LPC coeffs printout
+    /*for (float bbb : LPCcoeffs) {
+        std::cout << bbb << " ";
+    }
+    std::cout << "\n\n";*/
+
     // we have 1024 samples 48 LPC coeffs.. 21 to 1 compression
     // filter overlapBuffer with all-pole filter from LPC coefficients
     residuals();
@@ -70,9 +98,9 @@ void LPCeffect::doLPC()
 }
 
 // calculate autocorrelation coefficients of a single frame
-void LPCeffect::autocorrelation() //TODO: needed also R(0) = 1?
+void LPCeffect::autocorrelation() //TODO: R(0) always 1, necessary?
 {
-    // coefficients go up to frameSize - 1, but since levinson needs only modelOrder: cycling lag "k" 0 up to modelOrder
+    // coefficients go up to frameSize, but since levinson needs modelOrder: cycling lag "k" 0 to modelOrder
     // denominator and mean remain the same
     float denominator = 0;
     float mean = 0;
@@ -93,7 +121,6 @@ void LPCeffect::autocorrelation() //TODO: needed also R(0) = 1?
         }
         corrCoeff.push_back(numerator / denominator);
     }
-    // now we have a vector of coefficients R(0 - modelOrder)
 }
 
 // calculate filter parameters using this algorithm
@@ -132,12 +159,10 @@ void LPCeffect::levinsonDurbin(int startS)
      *          a[2][2] a[2][3]
      *                  a[3][3]
      *  formant frequency information (envelope)
-     *  sorting the coefficients for a filter column by column: */
-    for (int col = 1; col < modelOrder; ++col) {
-        for (int row = 1; row < modelOrder; ++row) {
-            if (a[row][col] != 0)
-                LPCcoeffs.push_back(a[row][col]);
-        }
+     *  saving the reflection diagonal coefficients: */
+    // TODO: 0,0 always 0, necessary?
+    for (int x = 0; x < modelOrder; ++x) {
+        LPCcoeffs.push_back(a[x][x]);
     }
     a.clear();
     E.clear();
@@ -150,13 +175,12 @@ void LPCeffect::residuals()
     filteredBuffer.clear();
 
     // white noise carrier signal
-    // TODO: carrier needs be modulated by gain?
     for (int n = 0; n < windowSize; ++n) {
         //float rnd = (float) (rand()) / (float) (rand());
         //if (rnd > 10)
         //    rnd /= 10;
         float rnd = rand() % 1000;
-        rnd /= 1000;
+        rnd /= 10000;
         overlapBuffer.setSample(0, n, rnd);
     }
 
@@ -192,13 +216,39 @@ void LPCeffect::residuals()
         }
         //sum -= overlapBuffer.getSample(0, n);
         filteredBuffer.setSample(0, n, sum);
-        // without filter
+
+        // log autocorr coeff values: 0 < x <= 1
+        //filteredBuffer.setSample(0, n, corrCoeff[n % corrCoeff.size()]);
+        // log LPC coeffs values
+        //filteredBuffer.setSample(0, n, LPCcoeffs[n % modelOrder]);
+        // bypass carrier
         //filteredBuffer.setSample(0,n,overlapBuffer.getSample(0, n));
     }*/
-
 }
 
 // filter white noise or other carrier with all-pole/all-zero filter from LPC coefficients
 void LPCeffect::filterCarrier() {
 
+}
+
+std::vector<float> logInpBuffer;
+std::vector<float> logOutBuffer;
+void LPCeffect::logValues(float input, float output)
+{   // txt file value logger
+    logInpBuffer.push_back(input);
+    logOutBuffer.push_back(output);
+    if (logInpBuffer.size() >= windowSize)
+    {
+        juce::File logFile("C:/Users/legionntb/Desktop/jucelog.txt");
+        std::unique_ptr<juce::FileOutputStream> stream(logFile.createOutputStream());
+        if (stream) {
+            stream->setPosition(0);
+            for (int i = 0; i < windowSize; ++i) {
+                juce::String logMessage = juce::String(logInpBuffer[i]) + " -> " + juce::String(logOutBuffer[i]) + "\n";
+                stream->writeString(logMessage);
+            }
+        }
+        logInpBuffer.clear();
+        logOutBuffer.clear();
+    }
 }

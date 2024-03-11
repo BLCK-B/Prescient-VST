@@ -14,6 +14,7 @@ private:
     void levinsonDurbin(int startS);
     void residuals();
     void filterCarrier();
+    void logValues(float input, float output);
 
     const int windowSize = std::pow(2, 10); // 2^10 = 1024
     const int numChannels = 1;
