@@ -165,7 +165,9 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     fft[0].reset();
     fft[1].reset();
 
-    //LPCtests lpCtests;
+    LPCtests lpCtests;
+
+    //lpCtests.completeLPC();
     //lpCtests.OLAtest();
     //lpCtests.autocorrelationTest();
     //lpCtests.levinsonDurbinTest();
@@ -229,13 +231,13 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         }
         // LPC
 
-        //sampleL = sampleR = rand() % 20;
-        //std::cout<<"orig: "<<sampleL;
+        sampleL = sampleR = rand() % 1000 / 10000.0; if (sample == 0) std::cout<<"random input enabled\n";
+        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
         sampleL = lpcEffect[0].sendSample(sampleL);
         sampleR = lpcEffect[1].sendSample(sampleR);
 
-        //std::cout<<" out: "<<sampleL<<"\n";
+        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
 
         channelL[sample] = sampleL;
         channelR[sample] = sampleR;

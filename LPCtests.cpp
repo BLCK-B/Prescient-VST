@@ -157,20 +157,10 @@ class LPCtests {
          *          a[2][2] a[2][3]
          *                  a[3][3]
          *  formant frequency information (envelope)
-         *  sorting the coefficients for a filter column by column: */
-
-        /*for (int row = 1; row < modelOrder; ++row) {
-            for (int col = 1; col < modelOrder; ++col) {
-                std::cout << a[row][col] << " | ";
-            }
-            std::cout << "\n";
-        }*/
-
-        for (int col = 1; col < modelOrder; ++col) {
-            for (int row = 1; row < modelOrder; ++row) {
-                if (a[row][col] != 0)
-                    LPCcoeffs.push_back(a[row][col]);
-            }
+         *  */
+        for (int x = 0; x < modelOrder; ++x) {
+            std::cout << a[x][x] << " ";
+            LPCcoeffs.push_back(a[x][x]);
         }
         a.clear();
         E.clear();
@@ -187,6 +177,130 @@ class LPCtests {
             std::cout << "PASSED levinsonDurbin test\n";
         else
             std::cout << "DID NOT PASS levinsonDurbin test\n";
+    }
+
+    void completeLPC() {
+        // data setup
+        const int modelOrder = 4;
+        std::array<float, 18> input = {1,2,3,4,5,6,7,8,9,1,2,3,4,5,6,7,8,9};
+        const int windowSize = input.size();
+        juce::AudioBuffer<float> frameBuffer(1, windowSize);
+        std::vector<float> corrCoeff;
+        for (int i = 0; i < windowSize; ++i) {
+            frameBuffer.setSample(0, i, input[i]);
+        }
+        std::vector<float> LPCcoeffs;
+
+//        float* inputChPointer = frameBuffer.getWritePointer(0);
+//        juce::dsp::WindowingFunction<float> hannWindow(frameSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann);
+//        hannWindow.multiplyWithWindowingTable(inputChPointer, frameSize);
+
+        // logic
+        float denominator = 0;
+        float mean = 0;
+        for (int i = 0; i < windowSize; ++i) {
+            mean += frameBuffer.getSample(0, i);
+        }
+        mean /= windowSize;
+        for (int n = 0; n < windowSize; ++n) {
+            float sample = frameBuffer.getSample(0, n);
+            denominator += std::pow((sample - mean), 2);
+        }
+
+        for (int k = 0; k < windowSize; ++k) {
+            float numerator = 0;
+            for (int n = 0; n < windowSize - k; ++n) {
+                float sample = frameBuffer.getSample(0, n);
+                float lagSample = frameBuffer.getSample(0, n + k);
+                numerator += (sample - mean) * (lagSample - mean);
+            }
+            corrCoeff.push_back(numerator / denominator);
+        }
+        std::cout << "autocorr coeffs:\n";
+        for (int x = 0; x < windowSize; ++x) {
+            std::cout << setprecision(4) << corrCoeff[x] << " ";
+        }
+
+        // logic
+        std::vector<float> k (modelOrder + 1);
+        std::vector<float> E (modelOrder + 1);
+        // two-dimensional vector because matrix
+        // j = row, i = column
+        std::vector<std::vector<float>> a (modelOrder + 1, std::vector<float>(modelOrder + 1));
+
+        // initialization with i = 1
+        E[0] = a[0][0] = corrCoeff[0];
+        k[1] = - corrCoeff[1] / E[0];
+        a[1][1] = k[1];
+        auto k2 = static_cast<float>(std::pow(k[1], 2));
+        E[1] = (1 - k2) * E[0];
+
+        a[0][1] = 1;
+        a[0][2] = 1;
+        a[0][3] = 1;
+        a[0][4] = 1;
+
+        // loop beginning with i = 2
+        for (int i = 2; i <= modelOrder; ++i) {
+            float sumResult = 0;
+            for (int j = 1; j < i; ++j) {
+                sumResult += a[j][i - 1] * corrCoeff[i - j];
+            }
+            k[i] = - (corrCoeff[i] + sumResult) / E[i - 1];
+            a[i][i] = k[i];
+            for (int j = 1; j < i; ++j) {
+                a[j][i] = a[j][i - 1] + k[i] * a[i - j][i - j];
+            }
+            k2 = static_cast<float>(std::pow(k[i], 2));
+            E[i] = (1 - k2) * E[i - 1];
+        }
+
+        std::cout << "\nLPC coeffs:\n";
+        for (int x = 0; x <= modelOrder; ++x) {
+            LPCcoeffs.push_back(a[x][modelOrder]);
+            std::cout << a[x][modelOrder] << " ";
+        }
+//        for (int x = 0; x <= modelOrder; ++x) {
+//            for (int y = 0; y <= modelOrder; ++y) {
+//                std::cout << a[x][y] << " ";
+//            }
+//            std::cout << "\n";
+//        }
+
+        std::cout<<"\nfiltered: \n";
+        juce::AudioBuffer<float> filteredBuffer (1, windowSize);
+        std::vector<float> previousSamples(modelOrder + 1, 0.0f);
+
+//        for (int n = 0; n < windowSize; ++n) {
+//            float sum = input[n];
+//            for (int i = 0; i < modelOrder; ++i) {
+//                sum -= LPCcoeffs[i] * previousSamples[i];
+//            }
+//            // move all to right
+//            for (int g = modelOrder - 1; g > 0; --g) {
+//                previousSamples[g] = previousSamples[g - 1];
+//            }
+//            // add last to beginning
+//            previousSamples[0] = sum;
+//            // output
+//            filteredBuffer.setSample(0,n,sum);
+//            std::cout << input[n] << " -> " << sum <<",  ";
+//        }
+
+        for (int i = 0; i < windowSize; ++i) {
+            filteredBuffer.setSample(0, i, 0);
+        }
+        for (int n = 0; n < windowSize; ++n) {
+            float sum = input[n];
+            for (int i = 0; i < modelOrder; ++i) {
+                if (n - i >= 0)
+                    sum -= LPCcoeffs[i] * filteredBuffer.getSample(0, n - i);
+                else
+                    break;
+            }
+            std::cout << input[n] << " -> " << sum <<",  ";
+            filteredBuffer.setSample(0,n,sum);
+        }
     }
 
     void residualsTest() {
