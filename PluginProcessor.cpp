@@ -213,9 +213,10 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     float* channelR = buffer.getWritePointer(1);
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
-        // delay line
+
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
+
         // flanger
         //channelL[sample] = flangerEffect(sampleL);
         //channelR[sample] = flangerEffect(sampleR);
@@ -223,21 +224,21 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         if (chainSettings.FFT) {
             sampleL = channelL[sample];
             sampleR = channelR[sample];
-            sampleL = fft[0].processSample(sampleL, factor * 0.3, robot);
+            sampleL = fft[0].processSample(sampleL, factor * 0.3f, robot);
             sampleR = fft[1].processSample(sampleR, factor, robot);
 
             channelL[sample] = sampleL;
             channelR[sample] = sampleR;
         }
-        // LPC
 
-        sampleL = sampleR = rand() % 1000 / 10000.0; if (sample == 0) std::cout<<"random input enabled\n";
-        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
+        // LPC
+//        sampleL = sampleR = rand() % 1000 / 1000.0;
+//        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
         sampleL = lpcEffect[0].sendSample(sampleL);
         sampleR = lpcEffect[1].sendSample(sampleR);
 
-        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
+//        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
 
         channelL[sample] = sampleL;
         channelR[sample] = sampleR;
@@ -256,8 +257,8 @@ float MyAudioProcessor::flangerEffect(float currentSample) {
     // push sample onto delay line
     flangerDelayLine.pushSample(0, currentSample);
     // retrieving a sample from delayline with delay
-    float currentDelayInSamples = currentDelay * getSampleRate() / 1000.0f;
-    float delayedSample = flangerDelayLine.popSample(0, currentDelayInSamples, true) * (1.0 - ratio);
+    float currentDelayInSamples = currentDelay * getSampleRate() / 1000.f;
+    float delayedSample = flangerDelayLine.popSample(0, currentDelayInSamples, true) * (1.f - ratio);
 
     float finalSample = ratio * currentSample + delayedSample * invert;
     return finalSample;
@@ -299,4 +300,3 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new MyAudioProcessor();
 }
-

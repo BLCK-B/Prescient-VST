@@ -2,7 +2,8 @@
 
 // constructor
 LPCeffect::LPCeffect() : inputBuffer(numChannels, windowSize),
-                         filteredBuffer(numChannels, windowSize)
+                         filteredBuffer(numChannels, windowSize),
+                         LPCcoeffs(modelOrder)
 {
     // initialize filteredBuffer with 0s
     for (int j = 0; j < windowSize; ++j) {
@@ -19,13 +20,15 @@ float LPCeffect::sendSample(float sample)
         index = 0;
         doLPC();
     }
-
     float output = filteredBuffer.getSample(0, index);
 
-    // debug logging
-    //if (output != 0) logValues(sample, output);
+    // analysis and debug logging
+//    logValues(sample, output);
 
-    return output == NULL ? 0 : output;
+    if (output == NULL)
+        return 0.f;
+
+    return output;
 }
 
 // split into frames > R coeff > hann > OLA > LPC coeffs > residuals
@@ -34,8 +37,7 @@ void LPCeffect::doLPC()
     // calculate coefficients
     autocorrelation();
     levinsonDurbin();
-
-    // filter overlapBuffer with all-pole filter from LPC coefficients
+    // filter overlapBuffer with all-pole filter (AR) from LPC coefficients
     residuals();
     corrCoeff.clear();
     LPCcoeffs.clear();
@@ -46,15 +48,15 @@ void LPCeffect::autocorrelation()
 {
     // coefficients go up to frameSize, but since levinson needs modelOrder: cycling lag "k" 0 to modelOrder
     // denominator and mean remain the same
-    float denominator = 0;
-    float mean = 0;
+    float denominator = 0.f;
+    float mean = 0.f;
     for (int i = 0; i < windowSize; ++i) {
         mean += inputBuffer.getSample(0, i);
     }
     mean /= windowSize;
     for (int n = 0; n < windowSize; ++n) {
         float sample = inputBuffer.getSample(0, n);
-        denominator += std::pow((sample - mean), 2);
+        denominator += std::pow((sample - mean), 2.f);
     }
     for (int k = 0; k <= modelOrder; ++k) {
         float numerator = 0;
@@ -74,8 +76,7 @@ void LPCeffect::levinsonDurbin()
     // levinson durbin algorithm
     std::vector<float> k (modelOrder + 1);
     std::vector<float> E (modelOrder + 1);
-    // two-dimensional vector because matrix
-    // j = row, i = column
+    // matrix of LPC coefficients a[j][i] j = row, i = column
     std::vector<std::vector<float>> a (modelOrder + 1, std::vector<float>(modelOrder + 1));
 
     // initialization with i = 1
@@ -91,7 +92,7 @@ void LPCeffect::levinsonDurbin()
 
     // loop beginning with i = 2
     for (int i = 2; i <= modelOrder; ++i) {
-        float sumResult = 0;
+        float sumResult = 0.f;
         for (int j = 1; j < i; ++j) {
             sumResult += a[j][i - 1] * corrCoeff[i - j];
         }
@@ -121,7 +122,9 @@ void LPCeffect::levinsonDurbin()
 // filtering the buffer with all-pole filter from LPC coefficients
 void LPCeffect::residuals()
 {
-    filteredBuffer.clear();
+    for (int j = 0; j < windowSize; ++j) {
+        filteredBuffer.setSample(0, j, 0);
+    }
 
     // white noise carrier signal
     for (int n = 0; n < windowSize; ++n) {
@@ -130,11 +133,24 @@ void LPCeffect::residuals()
         inputBuffer.setSample(0, n, rnd);
     }
 
-    // synthesis filter
-    // assuming g=1
-    // FIFO buffer of modelOrder previous samples
-    std::vector<float> previousSamples(modelOrder + 1, 0.0f);
+    for (int n = 0; n < windowSize; ++n) {
+        float sum = inputBuffer.getSample(0, n);
+        for (int i = 0; i < modelOrder; ++i) {
+            if (n - i >= 0)
+                sum -= LPCcoeffs[i] * filteredBuffer.getSample(0, n - i);
+            else
+                break;
+        }
+        filteredBuffer.setSample(0,n,sum);
 
+        // log LPC coeffs values
+//        filteredBuffer.setSample(0, n, LPCcoeffs[n % modelOrder]);
+        filteredBuffer.setSample(0, n, corrCoeff[n % modelOrder]);
+    }
+
+    // synthesis filter
+    // FIFO buffer of modelOrder previous samples
+//    std::vector<float> previousSamples(modelOrder + 1, 0.0f)
 //    for (int n = 0; n < windowSize; ++n) {
 //        float sum = inputBuffer.getSample(0, n);
 //        for (int i = 0; i < modelOrder; ++i) {
@@ -153,24 +169,7 @@ void LPCeffect::residuals()
 //        //filteredBuffer.setSample(0, n, corrCoeff[n % corrCoeff.size()]);
 //        // log LPC coeffs values
 //        //filteredBuffer.setSample(0, n, LPCcoeffs[n % modelOrder]);
-//        // bypass carrier
-//        //filteredBuffer.setSample(0,n,overlapBuffer.getSample(0, n));
 //    }
-
-    // try copy of vocoderproj
-    for (int i = 0; i < windowSize; ++i) {
-        filteredBuffer.setSample(0, i, 0);
-    }
-    for (int n = 0; n < windowSize; ++n) {
-        float sum = inputBuffer.getSample(0, n);
-        for (int i = 0; i < modelOrder; ++i) {
-            if (n - i >= 0)
-                sum -= LPCcoeffs[i] * filteredBuffer.getSample(0, n - i);
-            else
-                break;
-        }
-        filteredBuffer.setSample(0,n,sum);
-    }
 }
 
 std::vector<float> logInpBuffer;
@@ -185,9 +184,9 @@ void LPCeffect::logValues(float input, float output)
         std::unique_ptr<juce::FileOutputStream> stream(logFile.createOutputStream());
         if (stream) {
             stream->setPosition(0);
-            for (int i = 0; i < windowSize; ++i) {
-                juce::String logMessage = juce::String(logInpBuffer[i]) + " -> " + juce::String(logOutBuffer[i]) + "\n";
-                stream->writeString(logMessage);
+            for (int i = 0; i < logInpBuffer.size(); ++i) {
+                juce::String logMessage = juce::String(logInpBuffer[i], 5) + " -> " + juce::String(logOutBuffer[i], 5) + "\n";
+                stream -> writeString(logMessage);
             }
         }
         logInpBuffer.clear();
