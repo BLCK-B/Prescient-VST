@@ -154,32 +154,65 @@ void LPCeffect::matlabLevinson() {
     // init
     for (int r = 0; r < modelOrder; ++r) {
         for (int c = 0; c < modelOrder; ++c) {
-            a[r][c] = 0;
+            a[r][c] = 0.f;
         }
     }
+    for (int r = 0; r <= modelOrder; ++r) {
+        a[r][r] = 1;
+    }
 
-    k[1] = - corrCoeff[2] / corrCoeff[1];
-    a[1][1] = k[1];
-    E[1] = (1 - pow(k[1], 2)) * corrCoeff[1];
+    k[0] = - corrCoeff[1] / corrCoeff[0];
+    a[0][1] = k[0];
+    float kTo2 = pow(k[0], 2);
+    E[0] = (1 - kTo2) * corrCoeff[0];
 
-    for (int i = 2; i < modelOrder; ++i) {
-        float sum = 0;
+    // TODO: a[j][i] j = row, i = column
+    for (int i = 2; i <= modelOrder; ++i) {
+        float sum = 0.f;
+        for (int j = 0; j <= i; ++j) {
+            sum += a[j][i-1] * corrCoeff[j + 1];
+        }
+        k[i-1] = - sum / E[i - 1-1];
+        a[0][i+1-1] = k[i-1];
+        // alright
+        for (int ge = 0; ge <= modelOrder; ++ge) {
+            for (int ye = 0; ye <= modelOrder; ++ye) {
+                std::cout << setprecision(4) << a[ye][ge] << " ";
+            }
+            std::cout << "\n";
+        } std::cout << "\n";
+
         for (int j = 1; j < i; ++j) {
-            sum += a[i][j] * corrCoeff[j];
-        }
-        k[i] = - sum / E[i - 1];
-        a[i][1] = k[i];
 
-        for (int j = 2; j < i; ++j) {
-            a[i][j] = a[i][j - 1] + k[i] * a[i][i - j];
-        }
-        E[i] = (1 - pow(k[i], 2)) * E[i - 1];
-    }
+            std::cout << i<<","<<j<<"\n";
+            a[j][i] = 5; // a[j-1][i] + k[i] * a[i-j][i];
 
-    for (int x = 0; x < modelOrder; ++x) {
-        LPCcoeffs.push_back(a[modelOrder][modelOrder - x]);
-        std::cout << LPCcoeffs[x] << "\n";
+            for (int ge = 0; ge <= modelOrder; ++ge) {
+                for (int ye = 0; ye <= modelOrder; ++ye) {
+                    std::cout << setprecision(4) << a[ye][ge] << " ";
+                }
+                std::cout << "\n";
+            } std::cout << "\n";
+
+        }
+
+        kTo2 = pow(k[i],2);
+        E[i] = (1 - kTo2) * E[i - 1];
     }
+    std::cout << "end\n\n";
+
+//    for (int x = 0; x < modelOrder; ++x) {
+//        LPCcoeffs.push_back(a[modelOrder][modelOrder-x]);
+//        std::cout << LPCcoeffs[x] << " ";
+//    }
+//    std::cout << "\nend\n";
+
+//    for (int j = 0; j < modelOrder; ++j) {
+//        for (int i = 0; i < modelOrder; ++i) {
+//            std::cout << a[i][j] << " ";
+//        }
+//        std::cout << "\n";
+//    } std::cout << "\n";
 }
 
 // filtering the buffer with all-pole filter from LPC coefficients

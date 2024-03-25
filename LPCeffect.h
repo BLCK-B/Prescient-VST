@@ -20,7 +20,7 @@ private:
     //const int windowSize = std::pow(2, 10); // 2^10 = 1024
     const int windowSize = 1024;
     const int numChannels = 1;
-    const int modelOrder = 48;
+    const int modelOrder = 4;
     int index = 0;
 
     juce::AudioBuffer<float> inputBuffer;
