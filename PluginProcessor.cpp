@@ -236,8 +236,8 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
 //        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
-        sampleL = lpcEffect[0].sendSample(sampleL + 0.01);
-        sampleR = lpcEffect[1].sendSample(sampleR + 0.01);
+        sampleL = lpcEffect[0].sendSample(sampleL);
+        sampleR = lpcEffect[1].sendSample(sampleR);
 
 //        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
 
