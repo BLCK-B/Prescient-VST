@@ -15,7 +15,6 @@ private:
     void residuals();
     void logValues(float input, float output);
     void logAC();
-    void matlabLevinson();
 
     //const int windowSize = std::pow(2, 10); // 2^10 = 1024
     const int windowSize = 1024;

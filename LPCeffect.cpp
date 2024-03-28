@@ -6,9 +6,8 @@ LPCeffect::LPCeffect() : inputBuffer(numChannels, windowSize),
                          LPCcoeffs(modelOrder)
 {
     // initialize filteredBuffer with 0s
-    for (int j = 0; j < windowSize; ++j) {
+    for (int j = 0; j < windowSize; ++j)
         filteredBuffer.setSample(0, j, 0);
-    }
 }
 
 // add received sample to buffer, send to processing once buffer full
@@ -22,8 +21,7 @@ float LPCeffect::sendSample(float sample)
     }
     float output = filteredBuffer.getSample(0, index);
 
-    // analysis and debug logging
-//    logValues(sample, output);
+//    logValues(sample, output); // analysis and debug logging
 
     if (output == NULL)
         return 0.f;
@@ -36,8 +34,7 @@ void LPCeffect::doLPC()
 {
     // calculate coefficients
     autocorrelation();
-    matlabLevinson();
-
+    levinsonDurbin();
     // filter overlapBuffer with all-pole filter (AR) from LPC coefficients
     residuals();
     corrCoeff.clear();
@@ -54,7 +51,7 @@ void LPCeffect::autocorrelation()
     for (int i = 0; i < windowSize; ++i) {
         mean += inputBuffer.getSample(0, i);
     }
-    mean /= windowSize;
+    mean /= (float) windowSize;
     for (int n = 0; n < windowSize; ++n) {
         float sample = inputBuffer.getSample(0, n);
         denominator += std::pow((sample - mean), 2.f);
@@ -72,70 +69,7 @@ void LPCeffect::autocorrelation()
 //    logAC();
 }
 
-// calculate filter parameters using this algorithm
-void LPCeffect::levinsonDurbin()
-{
-//    // levinson durbin algorithm
-//    std::vector<float> k (modelOrder + 1);
-//    std::vector<float> E (modelOrder + 1);
-//    // matrix of LPC coefficients a[j][i] j = row, i = column
-//    std::vector<std::vector<float>> a (modelOrder + 1, std::vector<float>(modelOrder + 1));
-//
-//    // initialization with i = 1
-////    E[0] = a[0][0] = corrCoeff[0];
-//    // R[0] = 1 in any case
-//    E[0] = a[0][0] = 1.0;
-//    k[1] = - corrCoeff[1] / E[0];
-//    a[1][1] = k[1];
-//    float kPw2 = std::pow(k[1], 2);
-//    E[1] = (1 - kPw2) * E[0];
-//
-//    for (int i = 0; i <= modelOrder; ++i) {
-//        a[0][i] = 1;
-//    }
-//
-//    // loop beginning with i = 2
-//    for (int i = 2; i <= modelOrder; ++i) {
-//        float sumResult = 0.f;
-//        for (int j = 1; j < i; ++j) {
-//            sumResult += a[j][i - 1] * corrCoeff[i - j];
-//        }
-//        k[i] = - (corrCoeff[i] + sumResult) / E[i - 1];
-//
-//        jassert(abs(k[i]) <= 1);
-//
-//        a[i][i] = k[i];
-//        for (int j = 1; j < i; ++j) {
-//            a[j][i] = a[j][i - 1] + k[i] * a[i - j][i - j];
-//        }
-//        kPw2 = std::pow(k[i], 2);
-//        E[i] = (1 - kPw2) * E[i - 1];
-//    }
-//    /*  result in the form of
-//     *  a[1][1] a[1][2] a[1][3]
-//     *          a[2][2] a[2][3]
-//     *                  a[3][3]
-//     *  formant frequency information (envelope)
-//     *  saving the reflection diagonal coefficients: */
-//    for (int x = 0; x <= modelOrder; ++x) {
-//        LPCcoeffs.push_back(a[x][modelOrder]);
-////        std::cout << a[x][modelOrder] << "\n";
-//    }
-//    a.clear();
-//    E.clear();
-//    k.clear();
-}
-
-void LPCeffect::matlabLevinson() {
-//    std::vector<float> fakeAC = {
-//            1.00000, 0.98614, 0.94538, 0.87996, 0.79337, 0.68996, 0.57459, 0.45222, 0.32755, 0.20485, 0.08779, -0.02058,
-//            -0.11773, -0.20165, -0.27073, -0.32376, -0.35994, -0.37892, -0.38088, -0.36663, -0.33756, -0.29566,
-//            -0.24344, -0.18371, -0.11948, -0.05375, 0.01067, 0.07127, 0.12588, 0.17271, 0.21032, 0.23761, 0.25378,
-//            0.25834, 0.25116, 0.23258, 0.20344, 0.16521, 0.11999, 0.07048, 0.01982, -0.02858, -0.07133, -0.10538,
-//            -0.12826, -0.13838, -0.13508, -0.11872, -0.09057, 0};
-//    corrCoeff.clear();
-//    corrCoeff = fakeAC;
-
+void LPCeffect::levinsonDurbin() {
     // ensure enough autocorr coeffs, not ideal
     corrCoeff.push_back(0);
     corrCoeff.push_back(0);
@@ -156,7 +90,7 @@ void LPCeffect::matlabLevinson() {
 
     k[0] = - corrCoeff[1] / corrCoeff[0];
     a[1][0] = k[0];
-    float kTo2 = pow(k[0], 2);
+    float kTo2 = (float) pow(k[0], 2);
     E[0] = (1 - kTo2) * corrCoeff[0];
 
     for (int i = 2; i <= modelOrder; ++i) {
@@ -171,22 +105,13 @@ void LPCeffect::matlabLevinson() {
             a[i][j] = a[i-1][j-1] + k[i-1] * a[i-1][i-j-1];
         }
 
-        kTo2 = pow(k[i-1],2);
+        kTo2 = (float) pow(k[i-1],2);
         E[i-1] = (1 - kTo2) * E[i - 2];
     }
 
-//    for (int col = 0; col <= modelOrder; ++col) {
-//        for (int row = 0; row <= modelOrder; ++row) {
-//            std::cout << setprecision(5) << a[col][row] << " ";
-//        }
-//        std::cout << "\n";
-//    } std::cout << "\n";
-
-    for (int x = 0; x < modelOrder; ++x) {
-        LPCcoeffs.push_back(a[modelOrder][modelOrder-x]);
-//        std::cout << setprecision(5) << LPCcoeffs[x] << " ";
+    for (int x = 0; x <= modelOrder; ++x) {
+        LPCcoeffs.push_back(a[modelOrder][modelOrder - x]);
     }
-
 }
 
 // filtering the buffer with all-pole filter from LPC coefficients
@@ -198,48 +123,19 @@ void LPCeffect::residuals()
 
     // white noise carrier signal
     for (int n = 0; n < windowSize; ++n) {
-        float rnd = rand() % 1000;
+        float rnd = (float) (rand() % 1000);
         rnd /= 10000;
         inputBuffer.setSample(0, n, rnd);
     }
 
     for (int n = 0; n < windowSize; ++n) {
         float sum = inputBuffer.getSample(0, n);
-        for (int i = 0; i < modelOrder; ++i) {
-            if (n - i >= 0)
-                sum -= LPCcoeffs[i] * filteredBuffer.getSample(0, n - i);
-            else
-                break;
+        for (int i = 1; i <= modelOrder; ++i) {
+            if (n - i + 1 > 0)
+                sum += LPCcoeffs[i] * inputBuffer.getSample(0, n - i);
         }
-        filteredBuffer.setSample(0,n,sum);
-
-        // log LPC coeffs values
-//        filteredBuffer.setSample(0, n, LPCcoeffs[n % modelOrder]);
-//        filteredBuffer.setSample(0, n, corrCoeff[n % modelOrder]);
+        filteredBuffer.setSample(0, n, sum);
     }
-
-    // synthesis filter
-    // FIFO buffer of modelOrder previous samples
-//    std::vector<float> previousSamples(modelOrder + 1, 0.0f)
-//    for (int n = 0; n < windowSize; ++n) {
-//        float sum = inputBuffer.getSample(0, n);
-//        for (int i = 0; i < modelOrder; ++i) {
-//            sum -= LPCcoeffs[i] * previousSamples[i];
-//        }
-//        // move all to right
-//        for (int g = modelOrder - 1; g > 0; --g) {
-//            previousSamples[g] = previousSamples[g - 1];
-//        }
-//        // add last to beginning
-//        previousSamples[0] = sum;
-//        // output
-//        filteredBuffer.setSample(0,n,sum);
-//
-//        // log autocorr coeff values: 0 < x <= 1
-//        //filteredBuffer.setSample(0, n, corrCoeff[n % corrCoeff.size()]);
-//        // log LPC coeffs values
-//        //filteredBuffer.setSample(0, n, LPCcoeffs[n % modelOrder]);
-//    }
 }
 
 std::vector<float> logInpBuffer;
@@ -255,7 +151,7 @@ void LPCeffect::logValues(float input, float output)
         if (stream) {
             stream->setPosition(0);
             for (int i = 0; i < logInpBuffer.size(); ++i) {
-                juce::String logMessage = juce::String(logInpBuffer[i], 5) + " -> " + juce::String(logOutBuffer[i], 5) + ",\n";
+                juce::String logMessage = juce::String(logInpBuffer[i], 5)+"   -> "+juce::String(logOutBuffer[i], 5)+"\n";
                 stream -> writeString(logMessage);
             }
         }

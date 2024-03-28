@@ -1,113 +1,47 @@
-// manual, copy-over tests for initial verification of logic
-// every result value is reached with pen & paper and other tools when applicable
+// rather manual tests for initial verification of values
 class LPCtests {
 
     public:
 
-    void OLAtest() {
-        // data setup
-        const int windowSize = 24;
-        const int Nframes = 4;
-        const int frameSize = windowSize / Nframes;
-        int index = 0;
-        juce::AudioBuffer<float> inputBuffer(1, windowSize);
-        juce::AudioBuffer<float> overlapBuffer(1, windowSize);
-        juce::AudioBuffer<float> frameBuffer(1, frameSize);
-        juce::dsp::WindowingFunction<float> hannWindow(frameSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann);
-        // input emulation
-        for (int s = 1; s < 999; ++s) {
-            int sample = s;
-
-            // logic
-            inputBuffer.setSample(0, index, sample);
-            ++index;
-            if (index == windowSize) {
-                index = 0;
-                // inputBuffer: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
-                // Nframes in each channel
-                float* frameChPtr = frameBuffer.getWritePointer(0);
-                // initialize overlapBuffer with 0s
-                for (int j = 0; j < windowSize; ++j) {
-                    overlapBuffer.setSample(0, j, 0);
-                }
-
-                for (int i = 0; i < Nframes; ++i) {
-                    frameBuffer.clear();
-                    int startOfFrame = i * windowSize / Nframes ;
-                    // copy a frame from inputBuffer to frameBuffer
-                    frameBuffer.copyFrom(0, 0, inputBuffer, 0, startOfFrame, frameSize);
-                    // perform OLA one frame at a time
-                    hannWindow.multiplyWithWindowingTable(frameChPtr, frameSize);
-                    /* frame values:
-                        0 1.65836 6.51246 8.68328 4.1459 0
-                        0 6.63344 19.5374 21.7082 9.12097 0
-                        0 11.6085 32.5623 34.7331 14.0961 0
-                        0 16.5836 45.5872 47.758 19.0711 0
-                    */
-                    if (i == 0)
-                        overlapBuffer.addFrom(0, 0, frameBuffer, 0, 0, frameSize);
-                    else {
-                        int startSample = i * frameSize - (frameSize / 2) * i;
-                        overlapBuffer.addFrom(0, startSample, frameBuffer, 0, 0, frameSize);
-                    }
-                }
-
-                // verification
-                bool pass = true;
-                for (int g = 0; g < windowSize; ++g) {
-                    std::array<float, 24> expected = {0,1.66,6.51,8.68,10.78,19.54,21.71,20.73,32.56,34.73,30.67,45.59,47.76,19.07,0,0,0,0,0,0,0,0,0,0};
-                    float val = overlapBuffer.getSample(0, g);
-                    if (std::abs(val - expected[g]) > 0.01)
-                        pass = false;
-                }
-                if (pass)
-                    std::cout << "PASSED OLA test\n";
-                else
-                    std::cout << "DID NOT PASS OLA test\n";
-                break;
-            }
-        }
-    }
-
     void autocorrelationTest()
     {
         // data setup
-        std::array<float, 8> input = {2,3,4,6,9,7,2,1};
-        const int frameSize = input.size();
-        juce::AudioBuffer<float> frameBuffer(1, frameSize);
+        std::vector<float> input = {0.5, 0.4, 0.3, 0.2, 0.5, 0.4, 0.2, 0.1, 0.5, 0.8};
+        const int windowSize = input.size();
+        const int modelOrder = 6;
+        juce::AudioBuffer<float> inputBuffer(1, windowSize);
         std::vector<float> corrCoeff;
-        for (int i = 0; i < frameSize; ++i) {
-            frameBuffer.setSample(0, i, input[i]);
+        for (int i = 0; i < windowSize; ++i) {
+            inputBuffer.setSample(0, i, input[i]);
         }
-
         // logic
-        // coefficients go up to frameSize - 1
+        // coefficients go up to frameSize, but since levinson needs modelOrder: cycling lag "k" 0 to modelOrder
         // denominator and mean remain the same
-        float denominator = 0;
-        float mean = 0;
-        for (int i = 0; i < frameSize; ++i) {
-            mean += frameBuffer.getSample(0, i);
+        float denominator = 0.f;
+        float mean = 0.f;
+        for (int i = 0; i < windowSize; ++i) {
+            mean += inputBuffer.getSample(0, i);
         }
-        mean /= frameSize;
-        for (int n = 0; n < frameSize; ++n) {
-            float sample = frameBuffer.getSample(0, n);
-            denominator += std::pow((sample - mean), 2);
+        mean /= windowSize;
+        for (int n = 0; n < windowSize; ++n) {
+            float sample = inputBuffer.getSample(0, n);
+            denominator += std::pow((sample - mean), 2.f);
         }
-
-        for (int k = 0; k < frameSize; ++k) {
+        for (int k = 0; k <= modelOrder; ++k) {
             float numerator = 0;
-            for (int n = 0; n < frameSize - k; ++n) {
-                float sample = frameBuffer.getSample(0, n);
-                float lagSample = frameBuffer.getSample(0, n + k);
+            for (int n = 0; n < windowSize - k; ++n) {
+                float sample = inputBuffer.getSample(0, n);
+                float lagSample = inputBuffer.getSample(0, n + k);
                 numerator += (sample - mean) * (lagSample - mean);
             }
+            jassert(abs(numerator / denominator) <= 1);
             corrCoeff.push_back(numerator / denominator);
         }
 
         // verification
         bool pass = true;
-        std::array<float, 8> expected = {1, 0.454, -0.318, -0.539, -0.347, -0.046, 0.164, 0.132};
-        for (int k = 0; k < frameSize; ++k) {
+        std::vector<float> expected = {1.0, 0.1732, -0.5073, -0.2528, 0.2726, 0.1341, -0.3024};
+        for (int k = 0; k <= modelOrder; ++k) {
             if (std::abs(corrCoeff[k] - expected[k]) > 0.01)
                 pass = false;
         }
@@ -120,56 +54,63 @@ class LPCtests {
     void levinsonDurbinTest()
     {
         // data setup
-        const int modelOrder = 4;
-        std::vector<float> corrCoeff = {1, 0.7, 0.5, 0.8};
+        const int modelOrder = 6;
+        std::vector<float> corrCoeff = {1.0, 0.1732, -0.5073, -0.2528, 0.2726, 0.1341, -0.3024};
         std::vector<float> LPCcoeffs;
+        // ensure enough autocorr coeffs, not ideal
+        corrCoeff.push_back(0);
+        corrCoeff.push_back(0);
 
         // logic
-        std::vector<float> k (modelOrder);
-        std::vector<float> E (modelOrder);
-        // two-dimensional vector because matrix
-        // j = row, i = column
-        std::vector<std::vector<float>> a (modelOrder, std::vector<float>(modelOrder));
-
-        // initialization with i = 1
-        E[0] = corrCoeff[0];
-        k[1] = - corrCoeff[1] / E[0];
-        a[1][1] = k[1];
-        auto k2 = static_cast<float>(std::pow(k[1], 2));
-        E[1] = (1 - k2) * E[0];
-
-        // loop beginning with i = 2
-        for (int i = 2; i < modelOrder; ++i) {
-            float sumResult = 0;
-            for (int j = 1; j < i; ++j) {
-                sumResult += a[j][i - 1] * corrCoeff[i - j];
+        std::vector<float> k(modelOrder + 1);
+        std::vector<float> E(modelOrder + 1);
+        // matrix of LPC coefficients a[j][i] j = row, i = column
+        std::vector<std::vector<float>> a(modelOrder + 1, std::vector<float>(modelOrder + 1));
+        // init
+        for (int r = 0; r <= modelOrder; ++r) {
+            for (int c = 0; c < modelOrder; ++c) {
+                a[r][c] = 0.f;
             }
-            k[i] = - (corrCoeff[i] + sumResult) / E[i - 1];
-            a[i][i] = k[i];
-            for (int j = 1; j < i; ++j) {
-                a[j][i] = a[j][i - 1] + k[i] * a[i - j][i - j];
+        }
+        for (int r = 0; r <= modelOrder; ++r) {
+            a[r][r] = 1;
+        }
+
+        k[0] = - corrCoeff[1] / corrCoeff[0];
+        a[1][0] = k[0];
+        float kTo2 = pow(k[0], 2);
+        E[0] = (1 - kTo2) * corrCoeff[0];
+
+        for (int i = 2; i <= modelOrder; ++i) {
+            float sum = 0.f;
+            for (int j = 0; j <= i; ++j) {
+                sum += a[i-1][j] * corrCoeff[j + 1];
             }
-            k2 = static_cast<float>(std::pow(k[i], 2));
-            E[i] = (1 - k2) * E[i - 1];
+            k[i-1] = - sum / E[i - 1-1];
+            a[i][0] = k[i-1];
+
+            for (int j = 1; j < i; ++j) {
+                a[i][j] = a[i-1][j-1] + k[i-1] * a[i-1][i-j-1];
+            }
+
+            kTo2 = pow(k[i-1],2);
+            E[i-1] = (1 - kTo2) * E[i - 2];
         }
-        /*  result in the form of
-         *  a[1][1] a[1][2] a[1][3]
-         *          a[2][2] a[2][3]
-         *                  a[3][3]
-         *  formant frequency information (envelope)
-         *  */
-        for (int x = 0; x < modelOrder; ++x) {
-            std::cout << a[x][x] << " ";
-            LPCcoeffs.push_back(a[x][x]);
+    //    std::cout<<"LPC coeffs\n";
+    //    for (int col = 0; col <= modelOrder; ++col) {
+    //        for (int row = 0; row <= modelOrder; ++row) {
+    //            std::cout << setprecision(5) << a[row][col] << " ";
+    //        }
+    //        std::cout << "\n";
+    //    } std::cout << "\n\n";
+        for (int x = 0; x <= modelOrder; ++x) {
+            LPCcoeffs.push_back(a[modelOrder][modelOrder - x]);
         }
-        a.clear();
-        E.clear();
-        k.clear();
 
         // verification
         bool pass = true;
-        std::array<float, 6> expected = {-0.7, -0.686, -0.0196, -0.67, 0.59, -0.87};
-        for (int i = 0; i < LPCcoeffs.size(); ++i) {
+        std::vector<float> expected = {1.0, -0.2368, 0.4725, 0.1604, -0.0292, 0.0993, 0.2139};
+        for (int i = 0; i <= modelOrder; ++i) {
             if (std::abs(LPCcoeffs[i] - expected[i]) > 0.01)
                 pass = false;
         }
@@ -177,160 +118,42 @@ class LPCtests {
             std::cout << "PASSED levinsonDurbin test\n";
         else
             std::cout << "DID NOT PASS levinsonDurbin test\n";
+
     }
 
-    void completeLPC() {
+    void filterTest() {
         // data setup
-        const int modelOrder = 4;
-        std::array<float, 18> input = {1,2,3,4,5,6,7,8,9,1,2,3,4,5,6,7,8,9};
-        const int windowSize = input.size();
-        juce::AudioBuffer<float> frameBuffer(1, windowSize);
-        std::vector<float> corrCoeff;
+        const int modelOrder = 6;
+        std::vector<float> LPCcoeffs = {1.0, -0.2368, 0.4725, 0.1604, -0.0292, 0.0993, 0.2139};
+        std::vector<float> carrier = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.1};
+        const int windowSize = carrier.size();
+        juce::AudioBuffer<float> inputBuffer(1, windowSize);
+        juce::AudioBuffer<float> filteredBuffer(1, windowSize);
         for (int i = 0; i < windowSize; ++i) {
-            frameBuffer.setSample(0, i, input[i]);
-        }
-        std::vector<float> LPCcoeffs;
-
-//        float* inputChPointer = frameBuffer.getWritePointer(0);
-//        juce::dsp::WindowingFunction<float> hannWindow(frameSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann);
-//        hannWindow.multiplyWithWindowingTable(inputChPointer, frameSize);
-
-        // logic
-        float denominator = 0;
-        float mean = 0;
-        for (int i = 0; i < windowSize; ++i) {
-            mean += frameBuffer.getSample(0, i);
-        }
-        mean /= windowSize;
-        for (int n = 0; n < windowSize; ++n) {
-            float sample = frameBuffer.getSample(0, n);
-            denominator += std::pow((sample - mean), 2);
-        }
-
-        for (int k = 0; k < windowSize; ++k) {
-            float numerator = 0;
-            for (int n = 0; n < windowSize - k; ++n) {
-                float sample = frameBuffer.getSample(0, n);
-                float lagSample = frameBuffer.getSample(0, n + k);
-                numerator += (sample - mean) * (lagSample - mean);
-            }
-            corrCoeff.push_back(numerator / denominator);
-        }
-        std::cout << "autocorr coeffs:\n";
-        for (int x = 0; x < windowSize; ++x) {
-            std::cout << setprecision(4) << corrCoeff[x] << " ";
-        }
-
-        // logic
-        std::vector<float> k (modelOrder + 1);
-        std::vector<float> E (modelOrder + 1);
-        // two-dimensional vector because matrix
-        // j = row, i = column
-        std::vector<std::vector<float>> a (modelOrder + 1, std::vector<float>(modelOrder + 1));
-
-        // initialization with i = 1
-        E[0] = a[0][0] = corrCoeff[0];
-        k[1] = - corrCoeff[1] / E[0];
-        a[1][1] = k[1];
-        auto k2 = static_cast<float>(std::pow(k[1], 2));
-        E[1] = (1 - k2) * E[0];
-
-        a[0][1] = 1;
-        a[0][2] = 1;
-        a[0][3] = 1;
-        a[0][4] = 1;
-
-        // loop beginning with i = 2
-        for (int i = 2; i <= modelOrder; ++i) {
-            float sumResult = 0;
-            for (int j = 1; j < i; ++j) {
-                sumResult += a[j][i - 1] * corrCoeff[i - j];
-            }
-            k[i] = - (corrCoeff[i] + sumResult) / E[i - 1];
-            a[i][i] = k[i];
-            for (int j = 1; j < i; ++j) {
-                a[j][i] = a[j][i - 1] + k[i] * a[i - j][i - j];
-            }
-            k2 = static_cast<float>(std::pow(k[i], 2));
-            E[i] = (1 - k2) * E[i - 1];
-        }
-
-        std::cout << "\nLPC coeffs:\n";
-        for (int x = 0; x <= modelOrder; ++x) {
-            LPCcoeffs.push_back(a[x][modelOrder]);
-            std::cout << a[x][modelOrder] << " ";
-        }
-//        for (int x = 0; x <= modelOrder; ++x) {
-//            for (int y = 0; y <= modelOrder; ++y) {
-//                std::cout << a[x][y] << " ";
-//            }
-//            std::cout << "\n";
-//        }
-
-        std::cout<<"\nfiltered: \n";
-        juce::AudioBuffer<float> filteredBuffer (1, windowSize);
-        std::vector<float> previousSamples(modelOrder + 1, 0.0f);
-
-//        for (int n = 0; n < windowSize; ++n) {
-//            float sum = input[n];
-//            for (int i = 0; i < modelOrder; ++i) {
-//                sum -= LPCcoeffs[i] * previousSamples[i];
-//            }
-//            // move all to right
-//            for (int g = modelOrder - 1; g > 0; --g) {
-//                previousSamples[g] = previousSamples[g - 1];
-//            }
-//            // add last to beginning
-//            previousSamples[0] = sum;
-//            // output
-//            filteredBuffer.setSample(0,n,sum);
-//            std::cout << input[n] << " -> " << sum <<",  ";
-//        }
-
-        for (int i = 0; i < windowSize; ++i) {
+            inputBuffer.setSample(0, i, carrier[i]);
             filteredBuffer.setSample(0, i, 0);
         }
-        for (int n = 0; n < windowSize; ++n) {
-            float sum = input[n];
-            for (int i = 0; i < modelOrder; ++i) {
-                if (n - i >= 0)
-                    sum -= LPCcoeffs[i] * filteredBuffer.getSample(0, n - i);
-                else
-                    break;
-            }
-            std::cout << input[n] << " -> " << sum <<",  ";
-            filteredBuffer.setSample(0,n,sum);
-        }
-    }
-
-    void residualsTest() {
-        // data setup
-        const int modelOrder = 4;
-        const int windowSize = 24;
-        std::array<float, 6> LPCcoeffs = {-0.7, -0.68, -0.02, -0.67, 0.59, -0.87};
-        std::array<float, 24> OLAbufferData = {0,1.66,6.51,8.68,10.78,19.54,21.71,20.73,32.56,34.73,30.67,45.59,47.76,19.07,0,0,0,0,0,0,0,0,0,0};
-        juce::AudioBuffer<float> overlapBuffer(1, windowSize);
-        juce::AudioBuffer<float> filteredBuffer(1, windowSize);
-        for (int i = 0; i < OLAbufferData.size(); ++i)
-            overlapBuffer.setSample(0, i, OLAbufferData[i]);
-
         // logic
-        // initialize filteredBuffer with 0s
-        for (int j = 0; j < windowSize; ++j) {
-            filteredBuffer.setSample(0, j, 0);
-        }
-        for (int n = 1; n < windowSize; ++n) {
-            float filtered = 0;
-            for (int k = 0; k < modelOrder; ++k) {
-                if (n - k >= 0)
-                    filtered += LPCcoeffs[k] * overlapBuffer.getSample(0, n - k) + overlapBuffer.getSample(0, n);
+        for (int n = 0; n < windowSize; ++n) {
+            float sum = inputBuffer.getSample(0, n);
+            for (int i = 1; i <= modelOrder; ++i) {
+                if (n - i + 1 > 0)
+                    sum += LPCcoeffs[i] * inputBuffer.getSample(0, n - i);
             }
-            filteredBuffer.setSample(0, n, filtered);
+            filteredBuffer.setSample(0, n, sum);
         }
 
+        // verification
+        bool pass = true;
+        std::vector<float> expected = {0.1, 0.1763, 0.2999, 0.4395, 0.5762, 0.7228, 0.8908, 1.0588, 1.2269, 0.4949};
         for (int i = 0; i < windowSize; ++i) {
-            std::cout << overlapBuffer.getSample(0, i) << " -> " << filteredBuffer.getSample(0, i) << "\n";
+            if (std::abs(filteredBuffer.getSample(0, i) - expected[i]) > 0.01)
+                pass = false;
         }
+        if (pass)
+            std::cout << "PASSED filter test\n";
+        else
+            std::cout << "DID NOT PASS filter test\n";
     }
 
 };
