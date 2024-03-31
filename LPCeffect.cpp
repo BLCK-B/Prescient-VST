@@ -130,10 +130,11 @@ void LPCeffect::residuals()
 
     for (int n = 0; n < windowSize; ++n) {
         float sum = inputBuffer.getSample(0, n);
-        for (int i = 1; i <= modelOrder; ++i) {
-            if (n - i + 1 > 0)
-                sum += LPCcoeffs[i] * inputBuffer.getSample(0, n - i);
+        for (int k = 1; k <= modelOrder; ++k) {
+            if (n - k >= 0)
+                sum -= LPCcoeffs[k] * filteredBuffer.getSample(0, n - k);
         }
+        sum /= LPCcoeffs[0];
         filteredBuffer.setSample(0, n, sum);
     }
 }

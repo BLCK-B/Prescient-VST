@@ -136,17 +136,19 @@ class LPCtests {
         // logic
         for (int n = 0; n < windowSize; ++n) {
             float sum = inputBuffer.getSample(0, n);
-            for (int i = 1; i <= modelOrder; ++i) {
-                if (n - i + 1 > 0)
-                    sum += LPCcoeffs[i] * inputBuffer.getSample(0, n - i);
+            for (int k = 1; k <= modelOrder; ++k) {
+                if (n - k >= 0)
+                    sum -= LPCcoeffs[k] * filteredBuffer.getSample(0, n - k);
             }
+            sum /= LPCcoeffs[0];
             filteredBuffer.setSample(0, n, sum);
         }
 
         // verification
         bool pass = true;
-        std::vector<float> expected = {0.1, 0.1763, 0.2999, 0.4395, 0.5762, 0.7228, 0.8908, 1.0588, 1.2269, 0.4949};
+        std::vector<float> expected =  {0.1000, 0.2237, 0.3057, 0.3507, 0.4056, 0.4779, 0.5306, 0.5668, 0.6185, -0.2078};
         for (int i = 0; i < windowSize; ++i) {
+            std::cout << filteredBuffer.getSample(0, i) << "\n";
             if (std::abs(filteredBuffer.getSample(0, i) - expected[i]) > 0.01)
                 pass = false;
         }
