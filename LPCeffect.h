@@ -16,15 +16,19 @@ private:
     void logValues(float input, float output);
     void logAC();
 
-    //const int windowSize = std::pow(2, 10); // 2^10 = 1024
-    const int windowSize = 1024;
+    const int windowSize = 4000;
     const int numChannels = 1;
-    const int modelOrder = 48;
+    const int modelOrder = 40;
     int index = 0;
+
+    const float overlap = 0.25;
+    const int overlapSize = windowSize * overlap;
+    const int hopSize = windowSize - overlapSize;
 
     juce::AudioBuffer<float> inputBuffer;
     std::vector<float> corrCoeff;
     std::vector<float> LPCcoeffs;
     juce::AudioBuffer<float> filteredBuffer;
 
+    juce::dsp::WindowingFunction<float> hannWindow;
 };

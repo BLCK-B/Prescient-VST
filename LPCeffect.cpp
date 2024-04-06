@@ -3,7 +3,8 @@
 // constructor
 LPCeffect::LPCeffect() : inputBuffer(numChannels, windowSize),
                          filteredBuffer(numChannels, windowSize),
-                         LPCcoeffs(modelOrder)
+                         LPCcoeffs(modelOrder),
+                         hannWindow(windowSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann)
 {
     // initialize filteredBuffer with 0s
     for (int j = 0; j < windowSize; ++j)
@@ -29,7 +30,6 @@ float LPCeffect::sendSample(float sample)
     return output;
 }
 
-// split into frames > R coeff > hann > OLA > LPC coeffs > residuals
 void LPCeffect::doLPC()
 {
     // calculate coefficients
@@ -110,7 +110,7 @@ void LPCeffect::levinsonDurbin() {
     }
 
     for (int x = 0; x <= modelOrder; ++x) {
-        LPCcoeffs.push_back(a[modelOrder][modelOrder - x]);
+        LPCcoeffs.push_back(- a[modelOrder][modelOrder - x]); // note the -
     }
 }
 
@@ -118,7 +118,7 @@ void LPCeffect::levinsonDurbin() {
 void LPCeffect::residuals()
 {
     for (int j = 0; j < windowSize; ++j) {
-        filteredBuffer.setSample(0, j, 0);
+        filteredBuffer.setSample(0, j, 0.f);
     }
 
     // white noise carrier signal
@@ -137,6 +137,10 @@ void LPCeffect::residuals()
         sum /= LPCcoeffs[0];
         filteredBuffer.setSample(0, n, sum);
     }
+
+    // hann window
+    float* frameChPtr = filteredBuffer.getWritePointer(0);
+    hannWindow.multiplyWithWindowingTable(frameChPtr, windowSize);
 }
 
 std::vector<float> logInpBuffer;

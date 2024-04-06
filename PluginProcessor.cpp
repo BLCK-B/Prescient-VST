@@ -215,6 +215,9 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
 
+        if (abs(sampleL) < 0.000000001 || abs(sampleR) < 0.000000001)
+            continue;
+
         // flanger
         //channelL[sample] = flangerEffect(sampleL);
         //channelR[sample] = flangerEffect(sampleR);
@@ -232,6 +235,7 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
         // LPC
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
+
 //        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
         sampleL = lpcEffect[0].sendSample(sampleL);
