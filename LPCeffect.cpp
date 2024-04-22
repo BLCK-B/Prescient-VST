@@ -110,7 +110,7 @@ void LPCeffect::levinsonDurbin() {
     }
 
     for (int x = 0; x <= modelOrder; ++x) {
-        LPCcoeffs.push_back(- a[modelOrder][modelOrder - x]); // note the -
+        LPCcoeffs.push_back(- a[modelOrder][modelOrder - x] * 50); // note the -
     }
 }
 
@@ -140,7 +140,7 @@ void LPCeffect::residuals()
 
     // hann window
     float* frameChPtr = filteredBuffer.getWritePointer(0);
-    hannWindow.multiplyWithWindowingTable(frameChPtr, windowSize);
+//    hannWindow.multiplyWithWindowingTable(frameChPtr, windowSize);
 }
 
 std::vector<float> logInpBuffer;
