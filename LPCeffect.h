@@ -13,19 +13,17 @@ private:
     void autocorrelation();
     void levinsonDurbin();
     void residuals();
-    void logValues(float input, float output);
-    void logAC();
 
     const int windowSize = 4000;
     const int numChannels = 1;
-    const int modelOrder = 40;
+    const int modelOrder = 80;
     int index = 0;
 
     const float overlap = 0.25;
     const int overlapSize = windowSize * overlap;
     const int hopSize = windowSize - overlapSize;
 
-    juce::AudioBuffer<float> inputBuffer;
+    std::vector<float> inputBuffer;
     std::vector<float> corrCoeff;
     std::vector<float> LPCcoeffs;
     juce::AudioBuffer<float> filteredBuffer;

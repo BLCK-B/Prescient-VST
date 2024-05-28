@@ -1,7 +1,7 @@
 #include "LPCeffect.h"
 
 // constructor
-LPCeffect::LPCeffect() : inputBuffer(numChannels, windowSize),
+LPCeffect::LPCeffect() : inputBuffer(windowSize),
                          filteredBuffer(numChannels, windowSize),
                          LPCcoeffs(modelOrder),
                          hannWindow(windowSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann)
@@ -14,15 +14,13 @@ LPCeffect::LPCeffect() : inputBuffer(numChannels, windowSize),
 // add received sample to buffer, send to processing once buffer full
 float LPCeffect::sendSample(float sample)
 {
-    inputBuffer.setSample(0, index, sample);
+    inputBuffer[index] = sample;
     ++index;
     if (index == windowSize) {
         index = 0;
         doLPC();
     }
     float output = filteredBuffer.getSample(0, index);
-
-//    logValues(sample, output); // analysis and debug logging
 
     if (output == NULL)
         return 0.f;
@@ -49,18 +47,18 @@ void LPCeffect::autocorrelation()
     float denominator = 0.f;
     float mean = 0.f;
     for (int i = 0; i < windowSize; ++i) {
-        mean += inputBuffer.getSample(0, i);
+        mean += inputBuffer[i];
     }
     mean /= (float) windowSize;
     for (int n = 0; n < windowSize; ++n) {
-        float sample = inputBuffer.getSample(0, n);
+        float sample = inputBuffer[n];
         denominator += std::pow((sample - mean), 2.f);
     }
     for (int k = 0; k <= modelOrder; ++k) {
         float numerator = 0;
         for (int n = 0; n < windowSize - k; ++n) {
-            float sample = inputBuffer.getSample(0, n);
-            float lagSample = inputBuffer.getSample(0, n + k);
+            float sample = inputBuffer[n];
+            float lagSample = inputBuffer[n + k];
             numerator += (sample - mean) * (lagSample - mean);
         }
         jassert(abs(numerator / denominator) <= 1);
@@ -124,12 +122,12 @@ void LPCeffect::residuals()
     // white noise carrier signal
     for (int n = 0; n < windowSize; ++n) {
         float rnd = (float) (rand() % 1000);
-        rnd /= 10000;
-        inputBuffer.setSample(0, n, rnd);
+        rnd /= 1000;
+        inputBuffer[n] = rnd;
     }
 
     for (int n = 0; n < windowSize; ++n) {
-        float sum = inputBuffer.getSample(0, n);
+        float sum = inputBuffer[n];
         for (int k = 1; k <= modelOrder; ++k) {
             if (n - k >= 0)
                 sum -= LPCcoeffs[k] * filteredBuffer.getSample(0, n - k);
@@ -141,38 +139,4 @@ void LPCeffect::residuals()
     // hann window
     float* frameChPtr = filteredBuffer.getWritePointer(0);
 //    hannWindow.multiplyWithWindowingTable(frameChPtr, windowSize);
-}
-
-std::vector<float> logInpBuffer;
-std::vector<float> logOutBuffer;
-void LPCeffect::logValues(float input, float output)
-{   // txt file value logger
-    logInpBuffer.push_back(input);
-    logOutBuffer.push_back(output);
-    if (logInpBuffer.size() >= windowSize)
-    {
-        juce::File logFile("C:/Users/legionntb/Desktop/jucelog.txt");
-        std::unique_ptr<juce::FileOutputStream> stream(logFile.createOutputStream());
-        if (stream) {
-            stream->setPosition(0);
-            for (int i = 0; i < logInpBuffer.size(); ++i) {
-                juce::String logMessage = juce::String(logInpBuffer[i], 5)+"   -> "+juce::String(logOutBuffer[i], 5)+"\n";
-                stream -> writeString(logMessage);
-            }
-        }
-        logInpBuffer.clear();
-        logOutBuffer.clear();
-    }
-}
-
-void LPCeffect::logAC() {
-    juce::File logFile("C:/Users/legionntb/Desktop/jucelog.txt");
-    std::unique_ptr<juce::FileOutputStream> stream(logFile.createOutputStream());
-    if (stream) {
-        stream->setPosition(0);
-        for (float i : corrCoeff) {
-            juce::String logMessage = juce::String(i, 5) + ",\n";
-            stream -> writeString(logMessage);
-        }
-    }
 }
