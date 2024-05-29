@@ -8,12 +8,12 @@ public:
     FFTProcessor();
     int getLatencyInSamples() const { return fftSize; }
     void reset();
-    float processSample(float sample, float factor, bool robot);
+    float processSample(float sample);
     void processBlock(float* data, int numSamples);
 
 private:
-    void processFrame(float factor, bool robot);
-    void processSpectrum(float* data, int numBins, float factor, bool robot);
+    void processFrame();
+    void processSpectrum(float* data, int numBins);
     // The FFT has 2^order points and fftSize/2 + 1 bins.
     static constexpr int fftOrder = 10;
     static constexpr int fftSize = 1 << fftOrder;      // 1024 samples

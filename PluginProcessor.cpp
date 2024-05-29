@@ -226,8 +226,8 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         if (chainSettings.FFT) {
             sampleL = channelL[sample];
             sampleR = channelR[sample];
-            sampleL = fft[0].processSample(sampleL, factor * 0.3f, robot);
-            sampleR = fft[1].processSample(sampleR, factor, robot);
+            sampleL = fft[0].processSample(sampleL);
+            sampleR = fft[1].processSample(sampleR);
 
             channelL[sample] = sampleL;
             channelR[sample] = sampleR;

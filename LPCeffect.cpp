@@ -1,4 +1,8 @@
 #include "LPCeffect.h"
+#include <kfr/base.hpp>
+#include <kfr/dft.hpp>
+#include <kfr/dsp.hpp>
+using namespace kfr;
 
 // constructor
 LPCeffect::LPCeffect() : inputBuffer(windowSize),
@@ -6,6 +10,7 @@ LPCeffect::LPCeffect() : inputBuffer(windowSize),
                          LPCcoeffs(modelOrder),
                          hannWindow(windowSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann)
 {
+    jassert(inputBuffer.size() % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
     // initialize filteredBuffer with 0s
     for (int j = 0; j < windowSize; ++j)
         filteredBuffer.setSample(0, j, 0);
@@ -88,7 +93,7 @@ void LPCeffect::levinsonDurbin() {
 
     k[0] = - corrCoeff[1] / corrCoeff[0];
     a[1][0] = k[0];
-    float kTo2 = (float) pow(k[0], 2);
+    float kTo2 = (float) std::pow(k[0], 2);
     E[0] = (1 - kTo2) * corrCoeff[0];
 
     for (int i = 2; i <= modelOrder; ++i) {
@@ -103,7 +108,7 @@ void LPCeffect::levinsonDurbin() {
             a[i][j] = a[i-1][j-1] + k[i-1] * a[i-1][i-j-1];
         }
 
-        kTo2 = (float) pow(k[i-1],2);
+        kTo2 = (float) std::pow(k[i-1],2);
         E[i-1] = (1 - kTo2) * E[i - 2];
     }
 

@@ -19,11 +19,11 @@ void FFTProcessor::reset()
 void FFTProcessor::processBlock(float* data, int numSamples)
 {
     for (int i = 0; i < numSamples; ++i) {
-        data[i] = processSample(data[i], 1.0, false);
+        data[i] = processSample(data[i]);
     }
 }
 
-float FFTProcessor::processSample(float sample, float factor, bool robot)
+float FFTProcessor::processSample(float sample)
 {
     // pos = position
     inputFifo[pos] = sample;
@@ -37,12 +37,12 @@ float FFTProcessor::processSample(float sample, float factor, bool robot)
     count++;
     if (count == hopSize) {
         count = 0;
-        processFrame(factor, robot);
+        processFrame();
     }
     return outputSample;
 }
 
-void FFTProcessor::processFrame(float factor, bool robot)
+void FFTProcessor::processFrame()
 {
     const float* inputPtr = inputFifo.data();
     float* fftPtr = fftData.data();
@@ -53,7 +53,7 @@ void FFTProcessor::processFrame(float factor, bool robot)
 
     window.multiplyWithWindowingTable(fftPtr, fftSize);
     fft.performRealOnlyForwardTransform(fftPtr, true);
-    processSpectrum(fftPtr, numBins, factor, robot);
+    processSpectrum(fftPtr, numBins);
     fft.performRealOnlyInverseTransform(fftPtr);
     window.multiplyWithWindowingTable(fftPtr, fftSize);
 
@@ -70,25 +70,13 @@ void FFTProcessor::processFrame(float factor, bool robot)
     }
 }
 
-void FFTProcessor::processSpectrum(float* data, int numBins, float factor, bool robot)
+void FFTProcessor::processSpectrum(float* data, int numBins)
 {
     auto* cdata = reinterpret_cast<std::complex<float>*>(data);
 
     for (int i = 0; i < numBins; ++i) {
         float magn = std::abs(cdata[i]);
         float phase = std::arg(cdata[i]);
-
-        //cool robo voice
-        if (robot)
-            phase = 0;
-
-        while (phase < 2 * M_PI) {
-            phase += 2 * M_PI;
-        }
-        while (phase > 2 * M_PI) {
-            phase -= 2 * M_PI;
-        }
-
         cdata[i] = std::polar(magn, phase);
     }
 }

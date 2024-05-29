@@ -1,7 +1,12 @@
 #pragma once
+#include <kfr/base.hpp>
+#include <kfr/dft.hpp>
+#include <kfr/dsp.hpp>
+
 #ifndef AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
 #define AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
 #endif //AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
+using namespace kfr;
 
 class LPCeffect {
 public:
@@ -14,18 +19,18 @@ private:
     void levinsonDurbin();
     void residuals();
 
-    const int windowSize = 4000;
+    const int windowSize = 4096;
     const int numChannels = 1;
-    const int modelOrder = 80;
+    const int modelOrder = 120;
     int index = 0;
 
     const float overlap = 0.25;
     const int overlapSize = windowSize * overlap;
     const int hopSize = windowSize - overlapSize;
 
-    std::vector<float> inputBuffer;
-    std::vector<float> corrCoeff;
-    std::vector<float> LPCcoeffs;
+    univector<float> inputBuffer;
+    univector<float> corrCoeff;
+    univector<float> LPCcoeffs;
     juce::AudioBuffer<float> filteredBuffer;
 
     juce::dsp::WindowingFunction<float> hannWindow;
