@@ -32,6 +32,7 @@ private:
     univector<float> corrCoeff;
     univector<float> LPCcoeffs;
     juce::AudioBuffer<float> filteredBuffer;
+    univector<kfr::complex<float>> FFTbuffer;
 
     juce::dsp::WindowingFunction<float> hannWindow;
 };

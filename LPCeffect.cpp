@@ -1,14 +1,15 @@
 #include "LPCeffect.h"
 #include <kfr/base.hpp>
-#include <kfr/dft.hpp>
 #include <kfr/dsp.hpp>
+#include <kfr/dft.hpp>
 using namespace kfr;
 
 // constructor
 LPCeffect::LPCeffect() : inputBuffer(windowSize),
                          filteredBuffer(numChannels, windowSize),
                          LPCcoeffs(modelOrder),
-                         hannWindow(windowSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann)
+                         hannWindow(windowSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann),
+                         FFTbuffer(windowSize / 2 + 1) // the size of the output data is equal to size/2+1 for CCS
 {
     jassert(inputBuffer.size() % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
     // initialize filteredBuffer with 0s
@@ -47,6 +48,8 @@ void LPCeffect::doLPC()
 // calculate autocorrelation coefficients of a single frame
 void LPCeffect::autocorrelation()
 {
+    FFTbuffer = realdft(inputBuffer);
+
     // coefficients go up to frameSize, but since levinson needs modelOrder: cycling lag "k" 0 to modelOrder
     // denominator and mean remain the same
     float denominator = 0.f;

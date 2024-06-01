@@ -3,7 +3,8 @@ cmake_minimum_required(VERSION 3.15)
 project(AUDIO_PLUGIN_EXAMPLE VERSION 0.0.1)
 
 add_subdirectory("C:/JUCE" JUCE)
-add_subdirectory("C:/kfr" kfr-build-dir)
+
+add_subdirectory(kfr)
 
 # Include the JUCE module
 # "C:/JUCE/modules/juce_dsp"
@@ -93,6 +94,4 @@ target_link_libraries(AudioPluginExample
         juce::juce_recommended_warning_flags
 )
 
-target_link_libraries(AudioPluginExample PUBLIC kfr)
-target_link_libraries(AudioPluginExample PUBLIC kfr_dsp)
-#target_link_libraries(AudioPluginExample PUBLIC kfr_dft)
+target_link_libraries(AudioPluginExample PUBLIC kfr kfr_dsp kfr_dft)
