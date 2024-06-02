@@ -18,10 +18,11 @@ private:
     void autocorrelation();
     void levinsonDurbin();
     void residuals();
+    void filterFFT();
 
     const int windowSize = 4096;
     const int numChannels = 1;
-    const int modelOrder = 120;
+    const int modelOrder = 150;
     int index = 0;
 
     const float overlap = 0.25;
@@ -31,8 +32,7 @@ private:
     univector<float> inputBuffer;
     univector<float> corrCoeff;
     univector<float> LPCcoeffs;
-    juce::AudioBuffer<float> filteredBuffer;
-    univector<kfr::complex<float>> FFTbuffer;
+    univector<float> filteredBuffer;
 
     juce::dsp::WindowingFunction<float> hannWindow;
 };

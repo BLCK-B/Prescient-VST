@@ -1,9 +1,8 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.26)
 
 project(AUDIO_PLUGIN_EXAMPLE VERSION 0.0.1)
 
 add_subdirectory("C:/JUCE" JUCE)
-
 add_subdirectory(kfr)
 
 # Include the JUCE module

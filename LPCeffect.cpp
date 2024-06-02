@@ -6,15 +6,14 @@ using namespace kfr;
 
 // constructor
 LPCeffect::LPCeffect() : inputBuffer(windowSize),
-                         filteredBuffer(numChannels, windowSize),
+                         filteredBuffer( windowSize),
                          LPCcoeffs(modelOrder),
-                         hannWindow(windowSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann),
-                         FFTbuffer(windowSize / 2 + 1) // the size of the output data is equal to size/2+1 for CCS
+                         hannWindow(windowSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann)
 {
     jassert(inputBuffer.size() % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
     // initialize filteredBuffer with 0s
     for (int j = 0; j < windowSize; ++j)
-        filteredBuffer.setSample(0, j, 0);
+        filteredBuffer[j] = 0;
 }
 
 // add received sample to buffer, send to processing once buffer full
@@ -26,7 +25,7 @@ float LPCeffect::sendSample(float sample)
         index = 0;
         doLPC();
     }
-    float output = filteredBuffer.getSample(0, index);
+    float output = filteredBuffer[index];
 
     if (output == NULL)
         return 0.f;
@@ -40,7 +39,8 @@ void LPCeffect::doLPC()
     autocorrelation();
     levinsonDurbin();
     // filter overlapBuffer with all-pole filter (AR) from LPC coefficients
-    residuals();
+//    residuals();
+    filterFFT();
     corrCoeff.clear();
     LPCcoeffs.clear();
 }
@@ -48,8 +48,6 @@ void LPCeffect::doLPC()
 // calculate autocorrelation coefficients of a single frame
 void LPCeffect::autocorrelation()
 {
-    FFTbuffer = realdft(inputBuffer);
-
     // coefficients go up to frameSize, but since levinson needs modelOrder: cycling lag "k" 0 to modelOrder
     // denominator and mean remain the same
     float denominator = 0.f;
@@ -124,7 +122,7 @@ void LPCeffect::levinsonDurbin() {
 void LPCeffect::residuals()
 {
     for (int j = 0; j < windowSize; ++j) {
-        filteredBuffer.setSample(0, j, 0.f);
+        filteredBuffer[j] = 0.f;
     }
 
     // white noise carrier signal
@@ -138,13 +136,38 @@ void LPCeffect::residuals()
         float sum = inputBuffer[n];
         for (int k = 1; k <= modelOrder; ++k) {
             if (n - k >= 0)
-                sum -= LPCcoeffs[k] * filteredBuffer.getSample(0, n - k);
+                sum -= LPCcoeffs[k] * filteredBuffer[n - k];
         }
         sum /= LPCcoeffs[0];
-        filteredBuffer.setSample(0, n, sum);
+        filteredBuffer[n] = sum;
     }
 
     // hann window
-    float* frameChPtr = filteredBuffer.getWritePointer(0);
+//    float* frameChPtr = filteredBuffer.getWritePointer(0);
 //    hannWindow.multiplyWithWindowingTable(frameChPtr, windowSize);
+}
+
+void LPCeffect::filterFFT()
+{
+    for (int j = 0; j < windowSize; ++j) {
+        filteredBuffer[j] = 0.f;
+    }
+    // white noise carrier signal
+    for (int n = 0; n < windowSize; ++n) {
+        float rnd = (float) (rand() % 1000);
+        rnd /= 1000000 * 0.5;
+        inputBuffer[n] = rnd;
+    }
+
+    univector<float> paddedLPC(windowSize);
+    std::fill(paddedLPC.begin(), paddedLPC.end(), 0);
+    std::copy(LPCcoeffs.begin(), LPCcoeffs.end(), paddedLPC.begin());
+
+    univector<std::complex<float>> X = realdft(inputBuffer);
+    univector<std::complex<float>> H = realdft(paddedLPC);
+    univector<std::complex<float>> Y = X / H;
+    filteredBuffer = irealdft(Y);
+    for (float & i : filteredBuffer) {
+        i *= 0.1;
+    }
 }
