@@ -55,6 +55,48 @@ class LPCtests {
             std::cout << "DID NOT PASS autocorrelation test\n";
     }
 
+    void autocorrFFT()
+    {
+        // data setup
+        univector<float> inputBuffer = {0.5, 0.4, 0.3, 0.2, 0.5, 0.4, 0.2, 0.1, 0.5, 0.8};
+        const int windowSize = inputBuffer.size();
+        univector<float> corrCoeff;
+
+        // logic
+        float avg = std::accumulate(inputBuffer.begin(), inputBuffer.end(), 0.0) / inputBuffer.size();
+        univector<float> subtracted(windowSize);
+        for (size_t i = 0; i < windowSize; ++i)
+            subtracted[i] = inputBuffer[i] - avg;
+        float stdDeviation = std::sqrt(std::inner_product(subtracted.begin(), subtracted.end(), subtracted.begin(), 0.0) / windowSize);
+
+        univector<float> normalised(windowSize);
+        for (size_t i = 0; i < windowSize; ++i)
+            normalised[i] = subtracted[i] / stdDeviation;
+
+        univector<std::complex<float>> fftBuffer = realdft(normalised);
+        univector<std::complex<float>> powerSpDen(fftBuffer.size());
+        for (int i = 0; i < fftBuffer.size(); ++i)
+            powerSpDen[i] = std::abs(fftBuffer[i]) * std::abs(fftBuffer[i]);
+        univector<float> ifftBuffer = irealdft(powerSpDen);
+        int resLen = windowSize / 2;
+        for (int i = 0; i < resLen; ++i) {
+            corrCoeff.push_back(ifftBuffer[i] / windowSize * 0.1);
+        }
+
+        // verification
+        bool pass = true;
+        std::vector<float> expected = {1.0, 0.295, -0.463, -0.436, -0.029};
+        for (int k = 0; k < corrCoeff.size(); ++k) {
+            std::cout << corrCoeff[k] << "\n";
+            if (std::abs(corrCoeff[k] - expected[k]) > 0.01)
+                pass = false;
+        }
+        if (pass)
+            std::cout << "PASSED autocorrelation test\n";
+        else
+            std::cout << "DID NOT PASS autocorrelation test\n";
+    }
+
     void levinsonDurbinTest()
     {
         // data setup
