@@ -17,8 +17,7 @@ LPCeffect::LPCeffect() : inputBuffer(windowSize),
 }
 
 // add received sample to buffer, send to processing once buffer full
-float LPCeffect::sendSample(float sample)
-{
+float LPCeffect::sendSample(float sample) {
     inputBuffer[index] = sample;
     ++index;
     if (index == windowSize) {
@@ -33,44 +32,34 @@ float LPCeffect::sendSample(float sample)
     return output;
 }
 
-void LPCeffect::doLPC()
-{
-    // calculate coefficients
+void LPCeffect::doLPC() {
     autocorrelation();
     levinsonDurbin();
-    // filter overlapBuffer with all-pole filter (AR) from LPC coefficients
-//    residuals();
     filterFFT();
     corrCoeff.clear();
     LPCcoeffs.clear();
 }
 
-// calculate autocorrelation coefficients of a single frame
-void LPCeffect::autocorrelation()
-{
-    // coefficients go up to frameSize, but since levinson needs modelOrder: cycling lag "k" 0 to modelOrder
-    // denominator and mean remain the same
-    float denominator = 0.f;
-    float mean = 0.f;
-    for (int i = 0; i < windowSize; ++i) {
-        mean += inputBuffer[i];
+void::LPCeffect::autocorrelation() {
+    float avg = std::accumulate(inputBuffer.begin(), inputBuffer.end(), 0.0) / windowSize;
+    univector<float> subtracted(windowSize);
+    for (size_t i = 0; i < windowSize; ++i)
+        subtracted[i] = inputBuffer[i] - avg;
+    float stdDeviation = std::sqrt(std::inner_product(subtracted.begin(), subtracted.end(), subtracted.begin(), 0.0) / windowSize);
+
+    univector<float> normalised(windowSize);
+    for (size_t i = 0; i < windowSize; ++i)
+        normalised[i] = subtracted[i] / stdDeviation;
+
+    univector<std::complex<float>> fftBuffer = realdft(normalised);
+    univector<std::complex<float>> powerSpDen(fftBuffer.size());
+    for (int i = 0; i < fftBuffer.size(); ++i)
+        powerSpDen[i] = std::abs(fftBuffer[i]) * std::abs(fftBuffer[i]);
+    univector<float> ifftBuffer = irealdft(powerSpDen);
+    int resLen = windowSize / 2;
+    for (int i = 0; i < resLen; ++i) {
+        corrCoeff.push_back(ifftBuffer[i] / windowSize * 0.1);
     }
-    mean /= (float) windowSize;
-    for (int n = 0; n < windowSize; ++n) {
-        float sample = inputBuffer[n];
-        denominator += std::pow((sample - mean), 2.f);
-    }
-    for (int k = 0; k <= modelOrder; ++k) {
-        float numerator = 0;
-        for (int n = 0; n < windowSize - k; ++n) {
-            float sample = inputBuffer[n];
-            float lagSample = inputBuffer[n + k];
-            numerator += (sample - mean) * (lagSample - mean);
-        }
-        jassert(abs(numerator / denominator) <= 1);
-        corrCoeff.push_back(numerator / denominator);
-    }
-//    logAC();
 }
 
 void LPCeffect::levinsonDurbin() {
@@ -114,48 +103,18 @@ void LPCeffect::levinsonDurbin() {
     }
 
     for (int x = 0; x <= modelOrder; ++x) {
-        LPCcoeffs.push_back(- a[modelOrder][modelOrder - x] * 50); // note the -
+        LPCcoeffs.push_back(a[modelOrder][modelOrder - x]);
     }
 }
 
-// filtering the buffer with all-pole filter from LPC coefficients
-void LPCeffect::residuals()
-{
+void LPCeffect::filterFFT() {
     for (int j = 0; j < windowSize; ++j) {
         filteredBuffer[j] = 0.f;
     }
-
-    // white noise carrier signal
+    // white noise carrier
     for (int n = 0; n < windowSize; ++n) {
         float rnd = (float) (rand() % 1000);
-        rnd /= 1000;
-        inputBuffer[n] = rnd;
-    }
-
-    for (int n = 0; n < windowSize; ++n) {
-        float sum = inputBuffer[n];
-        for (int k = 1; k <= modelOrder; ++k) {
-            if (n - k >= 0)
-                sum -= LPCcoeffs[k] * filteredBuffer[n - k];
-        }
-        sum /= LPCcoeffs[0];
-        filteredBuffer[n] = sum;
-    }
-
-    // hann window
-//    float* frameChPtr = filteredBuffer.getWritePointer(0);
-//    hannWindow.multiplyWithWindowingTable(frameChPtr, windowSize);
-}
-
-void LPCeffect::filterFFT()
-{
-    for (int j = 0; j < windowSize; ++j) {
-        filteredBuffer[j] = 0.f;
-    }
-    // white noise carrier signal
-    for (int n = 0; n < windowSize; ++n) {
-        float rnd = (float) (rand() % 1000);
-        rnd /= 1000000 * 0.5;
+        rnd /= 10000000;
         inputBuffer[n] = rnd;
     }
 

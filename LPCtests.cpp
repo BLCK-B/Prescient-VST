@@ -7,55 +7,7 @@ class LPCtests {
 
     public:
 
-    void autocorrelationTest()
-    {
-        // data setup
-        std::vector<float> input = {0.5, 0.4, 0.3, 0.2, 0.5, 0.4, 0.2, 0.1, 0.5, 0.8};
-        const int windowSize = input.size();
-        const int modelOrder = 6;
-        juce::AudioBuffer<float> inputBuffer(1, windowSize);
-        std::vector<float> corrCoeff;
-        for (int i = 0; i < windowSize; ++i) {
-            inputBuffer.setSample(0, i, input[i]);
-        }
-        // logic
-        // coefficients go up to frameSize, but since levinson needs modelOrder: cycling lag "k" 0 to modelOrder
-        // denominator and mean remain the same
-        float denominator = 0.f;
-        float mean = 0.f;
-        for (int i = 0; i < windowSize; ++i) {
-            mean += inputBuffer.getSample(0, i);
-        }
-        mean /= windowSize;
-        for (int n = 0; n < windowSize; ++n) {
-            float sample = inputBuffer.getSample(0, n);
-            denominator += std::pow((sample - mean), 2.f);
-        }
-        for (int k = 0; k <= modelOrder; ++k) {
-            float numerator = 0;
-            for (int n = 0; n < windowSize - k; ++n) {
-                float sample = inputBuffer.getSample(0, n);
-                float lagSample = inputBuffer.getSample(0, n + k);
-                numerator += (sample - mean) * (lagSample - mean);
-            }
-            jassert(abs(numerator / denominator) <= 1);
-            corrCoeff.push_back(numerator / denominator);
-        }
-
-        // verification
-        bool pass = true;
-        std::vector<float> expected = {1.0, 0.1732, -0.5073, -0.2528, 0.2726, 0.1341, -0.3024};
-        for (int k = 0; k <= modelOrder; ++k) {
-            if (std::abs(corrCoeff[k] - expected[k]) > 0.01)
-                pass = false;
-        }
-        if (pass)
-            std::cout << "PASSED autocorrelation test\n";
-        else
-            std::cout << "DID NOT PASS autocorrelation test\n";
-    }
-
-    void autocorrFFT()
+    void FFTautocorrTest()
     {
         // data setup
         univector<float> inputBuffer = {0.5, 0.4, 0.3, 0.2, 0.5, 0.4, 0.2, 0.1, 0.5, 0.8};
@@ -92,9 +44,9 @@ class LPCtests {
                 pass = false;
         }
         if (pass)
-            std::cout << "PASSED autocorrelation test\n";
+            std::cout << "PASSED FFTautocorrelation test\n";
         else
-            std::cout << "DID NOT PASS autocorrelation test\n";
+            std::cout << "DID NOT PASS FFTautocorrelation test\n";
     }
 
     void levinsonDurbinTest()
@@ -167,46 +119,8 @@ class LPCtests {
 
     }
 
-    void filterTest() {
+    void IIRfilterTest() {
         // data setup
-        const int modelOrder = 6;
-        std::vector<float> LPCcoeffs = {1.0, -0.2368, 0.4725, 0.1604, -0.0292, 0.0993, 0.2139, 0.4525};
-        std::vector<float> carrier = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.1};
-        const int windowSize = carrier.size();
-        juce::AudioBuffer<float> inputBuffer(1, windowSize);
-        juce::AudioBuffer<float> filteredBuffer(1, windowSize);
-        for (int i = 0; i < windowSize; ++i) {
-            inputBuffer.setSample(0, i, carrier[i]);
-            filteredBuffer.setSample(0, i, 0);
-        }
-        // logic
-        for (int n = 0; n < windowSize; ++n) {
-            float sum = inputBuffer.getSample(0, n);
-            for (int k = 1; k <= modelOrder; ++k) {
-                if (n - k >= 0)
-                    sum -= LPCcoeffs[k] * filteredBuffer.getSample(0, n - k);
-            }
-            sum /= LPCcoeffs[0];
-            filteredBuffer.setSample(0, n, sum);
-        }
-
-        // verification
-        bool pass = true;
-        std::vector<float> expected =  {0.1000, 0.2237, 0.3057, 0.3507, 0.4056, 0.4779, 0.5306, 0.5668, 0.6185, -0.2078};
-        for (int i = 0; i < windowSize; ++i) {
-            std::cout << filteredBuffer.getSample(0, i) << "\n";
-            if (std::abs(filteredBuffer.getSample(0, i) - expected[i]) > 0.01)
-                pass = false;
-        }
-        if (pass)
-            std::cout << "PASSED filter test\n";
-        else
-            std::cout << "DID NOT PASS filter test\n";
-    }
-
-    void FIRfilterTest() {
-        // data setup
-        const int modelOrder = 6;
         univector<float> inputBuffer = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.1};
         const int windowSize = inputBuffer.size();
         univector<float> LPCcoeffs = {1.0, -0.2368, 0.4725, 0.1604, -0.0292, 0.0993, 0.2139, 0.4525};
@@ -225,7 +139,7 @@ class LPCtests {
 
         // verification
         bool pass = true;
-        std::vector<float> expected =  {0.1000, 0.2237, 0.3057, 0.3507, 0.4056, 0.4779, 0.5306, 0.5668, 0.6185, -0.2078};
+        std::vector<float> expected =  {-0.25, -0.02, -0.10, -0.31, -0.04, 0.56, 1.06, 0.91, 0.59, -0.22};
         for (int i = 0; i < windowSize; ++i) {
             std::cout << filteredBuffer[i] << "\n";
             if (std::abs(filteredBuffer[i] - expected[i]) > 0.01)

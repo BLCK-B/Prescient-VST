@@ -17,15 +17,16 @@ private:
     void doLPC();
     void autocorrelation();
     void levinsonDurbin();
-    void residuals();
     void filterFFT();
 
+//    const int windowSize = 8192;
     const int windowSize = 4096;
-    const int numChannels = 1;
-    const int modelOrder = 150;
+//    const int windowSize = 2048;
+
+    const int modelOrder = 160;
     int index = 0;
 
-    const float overlap = 0.25;
+    const float overlap = 0.5;
     const int overlapSize = windowSize * overlap;
     const int hopSize = windowSize - overlapSize;
 

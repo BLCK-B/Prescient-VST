@@ -1,7 +1,5 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "CustomFFT.cpp"
-#include "FFTProcessor.cpp"
 #include "LPCeffect.cpp"
 #include "LPCtests.cpp"
 //==============================================================================
@@ -157,21 +155,11 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     flangerDelayLine.prepare(spec);
     flangerDelayLine.setMaximumDelayInSamples(samplesPerBlock * 5);
 
-    //CustomFFT customFFT(32);
-    //int inputArray[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,26, 27, 28, 29, 30, 31, 32};
-    //customFFT.forwardTransform(inputArray);
-
-    setLatencySamples(fft[0].getLatencyInSamples());
-    fft[0].reset();
-    fft[1].reset();
-
     LPCtests lpCtests;
 
-//    lpCtests.autocorrelationTest();
-    lpCtests.autocorrFFT();
+//    lpCtests.FFTautocorrTest();
 //    lpCtests.levinsonDurbinTest();
-//    lpCtests.filterTest();
-//    lpCtests.FIRfilterTest();
+//    lpCtests.IIRfilterTest();
 }
 
 void MyAudioProcessor::releaseResources()
@@ -224,20 +212,8 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         //channelL[sample] = flangerEffect(sampleL);
         //channelR[sample] = flangerEffect(sampleR);
 
-        // fft
-        if (chainSettings.FFT) {
-            sampleL = channelL[sample];
-            sampleR = channelR[sample];
-            sampleL = fft[0].processSample(sampleL);
-            sampleR = fft[1].processSample(sampleR);
-
-            channelL[sample] = sampleL;
-            channelR[sample] = sampleR;
-        }
-
         // LPC
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
-
 //        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
         sampleL = lpcEffect[0].sendSample(sampleL);
