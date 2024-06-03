@@ -10,10 +10,8 @@ LPCeffect::LPCeffect() : inputBuffer(windowSize),
                          LPCcoeffs(modelOrder),
                          hannWindow(windowSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann)
 {
-    jassert(inputBuffer.size() % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
-    // initialize filteredBuffer with 0s
-    for (int j = 0; j < windowSize; ++j)
-        filteredBuffer[j] = 0;
+    jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
+    std::fill(filteredBuffer.begin(), filteredBuffer.end(), 0);
 }
 
 // add received sample to buffer, send to processing once buffer full
@@ -42,44 +40,28 @@ void LPCeffect::doLPC() {
 
 void::LPCeffect::autocorrelation() {
     float avg = std::accumulate(inputBuffer.begin(), inputBuffer.end(), 0.0) / windowSize;
-    univector<float> subtracted(windowSize);
-    for (size_t i = 0; i < windowSize; ++i)
-        subtracted[i] = inputBuffer[i] - avg;
+    univector<float> subtracted = inputBuffer - avg;
     float stdDeviation = std::sqrt(std::inner_product(subtracted.begin(), subtracted.end(), subtracted.begin(), 0.0) / windowSize);
 
-    univector<float> normalised(windowSize);
-    for (size_t i = 0; i < windowSize; ++i)
-        normalised[i] = subtracted[i] / stdDeviation;
+    univector<float> normalised = subtracted / stdDeviation;
 
     univector<std::complex<float>> fftBuffer = realdft(normalised);
     univector<std::complex<float>> powerSpDen(fftBuffer.size());
     for (int i = 0; i < fftBuffer.size(); ++i)
         powerSpDen[i] = std::abs(fftBuffer[i]) * std::abs(fftBuffer[i]);
     univector<float> ifftBuffer = irealdft(powerSpDen);
-    int resLen = windowSize / 2;
-    for (int i = 0; i < resLen; ++i) {
+    for (int i = 0; i < windowSize / 2; ++i)
         corrCoeff.push_back(ifftBuffer[i] / windowSize * 0.1);
-    }
 }
 
 void LPCeffect::levinsonDurbin() {
-    // ensure enough autocorr coeffs, not ideal
-    corrCoeff.push_back(0);
-    corrCoeff.push_back(0);
-
     std::vector<float> k(modelOrder + 1);
     std::vector<float> E(modelOrder + 1);
     // matrix of LPC coefficients a[j][i] j = row, i = column
-    std::vector<std::vector<float>> a(modelOrder + 1, std::vector<float>(modelOrder + 1));
+    std::vector<std::vector<float>> a(modelOrder + 1, std::vector<float>(modelOrder + 1, 0.0f));
     // init
-    for (int r = 0; r <= modelOrder; ++r) {
-        for (int c = 0; c < modelOrder; ++c) {
-            a[r][c] = 0.f;
-        }
-    }
-    for (int r = 0; r <= modelOrder; ++r) {
+    for (int r = 0; r <= modelOrder; ++r)
         a[r][r] = 1;
-    }
 
     k[0] = - corrCoeff[1] / corrCoeff[0];
     a[1][0] = k[0];
@@ -108,9 +90,7 @@ void LPCeffect::levinsonDurbin() {
 }
 
 void LPCeffect::filterFFT() {
-    for (int j = 0; j < windowSize; ++j) {
-        filteredBuffer[j] = 0.f;
-    }
+    std::fill(filteredBuffer.begin(), filteredBuffer.end(), 0);
     // white noise carrier
     for (int n = 0; n < windowSize; ++n) {
         float rnd = (float) (rand() % 1000);
@@ -118,8 +98,7 @@ void LPCeffect::filterFFT() {
         inputBuffer[n] = rnd;
     }
 
-    univector<float> paddedLPC(windowSize);
-    std::fill(paddedLPC.begin(), paddedLPC.end(), 0);
+    univector<float> paddedLPC(windowSize, 0.0f);
     std::copy(LPCcoeffs.begin(), LPCcoeffs.end(), paddedLPC.begin());
 
     univector<std::complex<float>> X = realdft(inputBuffer);

@@ -15,25 +15,19 @@ class LPCtests {
         univector<float> corrCoeff;
 
         // logic
-        float avg = std::accumulate(inputBuffer.begin(), inputBuffer.end(), 0.0) / inputBuffer.size();
-        univector<float> subtracted(windowSize);
-        for (size_t i = 0; i < windowSize; ++i)
-            subtracted[i] = inputBuffer[i] - avg;
+        float avg = std::accumulate(inputBuffer.begin(), inputBuffer.end(), 0.0) / windowSize;
+        univector<float> subtracted = inputBuffer - avg;
         float stdDeviation = std::sqrt(std::inner_product(subtracted.begin(), subtracted.end(), subtracted.begin(), 0.0) / windowSize);
 
-        univector<float> normalised(windowSize);
-        for (size_t i = 0; i < windowSize; ++i)
-            normalised[i] = subtracted[i] / stdDeviation;
+        univector<float> normalised = subtracted / stdDeviation;
 
         univector<std::complex<float>> fftBuffer = realdft(normalised);
         univector<std::complex<float>> powerSpDen(fftBuffer.size());
         for (int i = 0; i < fftBuffer.size(); ++i)
             powerSpDen[i] = std::abs(fftBuffer[i]) * std::abs(fftBuffer[i]);
         univector<float> ifftBuffer = irealdft(powerSpDen);
-        int resLen = windowSize / 2;
-        for (int i = 0; i < resLen; ++i) {
+        for (int i = 0; i < windowSize / 2; ++i)
             corrCoeff.push_back(ifftBuffer[i] / windowSize * 0.1);
-        }
 
         // verification
         bool pass = true;
@@ -55,7 +49,7 @@ class LPCtests {
         const int modelOrder = 6;
         std::vector<float> corrCoeff = {1.0, 0.1732, -0.5073, -0.2528, 0.2726, 0.1341, -0.3024};
         std::vector<float> LPCcoeffs;
-        // ensure enough autocorr coeffs, not ideal
+        // ensure enough autocorr coeffs
         corrCoeff.push_back(0);
         corrCoeff.push_back(0);
 
@@ -63,16 +57,10 @@ class LPCtests {
         std::vector<float> k(modelOrder + 1);
         std::vector<float> E(modelOrder + 1);
         // matrix of LPC coefficients a[j][i] j = row, i = column
-        std::vector<std::vector<float>> a(modelOrder + 1, std::vector<float>(modelOrder + 1));
+        std::vector<std::vector<float>> a(modelOrder + 1, std::vector<float>(modelOrder + 1, 0.0f));
         // init
-        for (int r = 0; r <= modelOrder; ++r) {
-            for (int c = 0; c < modelOrder; ++c) {
-                a[r][c] = 0.f;
-            }
-        }
-        for (int r = 0; r <= modelOrder; ++r) {
+        for (int r = 0; r <= modelOrder; ++r)
             a[r][r] = 1;
-        }
 
         k[0] = - corrCoeff[1] / corrCoeff[0];
         a[1][0] = k[0];
@@ -124,8 +112,7 @@ class LPCtests {
         univector<float> inputBuffer = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.1};
         const int windowSize = inputBuffer.size();
         univector<float> LPCcoeffs = {1.0, -0.2368, 0.4725, 0.1604, -0.0292, 0.0993, 0.2139, 0.4525};
-        univector<float> paddedLPC(windowSize);
-        std::fill(paddedLPC.begin(), paddedLPC.end(), 0);
+        univector<float> paddedLPC(windowSize, 0.0f);
         std::copy(LPCcoeffs.begin(), LPCcoeffs.end(), paddedLPC.begin());
 
         // logic
