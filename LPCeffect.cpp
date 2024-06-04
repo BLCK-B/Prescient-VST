@@ -34,7 +34,10 @@ float LPCeffect::sendSample(float sample) {
         activeBuffer = 2;
         doLPC();
     }
-    float output = filteredBuffer[index] + filteredBuffer2[index];
+
+    float output = filteredBuffer[index];
+    if (index2 >= hopSize & overlap != 0)
+        output += filteredBuffer2[index2 - hopSize];
 
     if (output == NULL)
         return 0.f;
@@ -46,8 +49,15 @@ void LPCeffect::doLPC() {
     autocorrelation();
     levinsonDurbin();
     filterFFT();
+
+//    if (activeBuffer == 1)
+//        filteredBuffer = hannWindow * inputBuffer;
+//    else
+//        filteredBuffer2 = hannWindow * inputBuffer2;
+
     corrCoeff.clear();
     LPCcoeffs.clear();
+
 }
 
 void::LPCeffect::autocorrelation() {
@@ -102,11 +112,6 @@ void LPCeffect::levinsonDurbin() {
 }
 
 void LPCeffect::filterFFT() {
-    if (activeBuffer == 1)
-        std::fill(filteredBuffer.begin(), filteredBuffer.end(), 0);
-    else
-        std::fill(filteredBuffer2.begin(), filteredBuffer2.end(), 0);
-
     // white noise carrier
     for (int n = 0; n < windowSize; ++n) {
         float rnd = (float) (rand() % 1000);

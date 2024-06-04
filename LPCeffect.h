@@ -22,14 +22,14 @@ private:
 //    const int windowSize = 8192;
     const int windowSize = 4096;
 //    const int windowSize = 2048;
-    univector<fbase, 4096> hannWindow = window_hann(windowSize);
+    univector<fbase, 4096> hannWindow = window_hann(4096);
 
-    const int modelOrder = 100;
+    const int modelOrder = 180;
     int index = 0;
     int index2 = 0;
     int activeBuffer = 0;
 
-    const float overlap = 0.9;
+    const float overlap = 0.5;
     const int overlapSize = round(windowSize * overlap);
     const int hopSize = windowSize - overlapSize;
 
