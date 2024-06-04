@@ -22,18 +22,22 @@ private:
 //    const int windowSize = 8192;
     const int windowSize = 4096;
 //    const int windowSize = 2048;
+    univector<fbase, 4096> hannWindow = window_hann(4096);
 
-    const int modelOrder = 160;
+    const int modelOrder = 180;
     int index = 0;
+    int index2 = 0;
+    int activeBuffer = 0;
 
     const float overlap = 0.5;
-    const int overlapSize = windowSize * overlap;
+    const int overlapSize = round(windowSize * overlap);
     const int hopSize = windowSize - overlapSize;
 
     univector<float> inputBuffer;
+    univector<float> inputBuffer2;
     univector<float> corrCoeff;
     univector<float> LPCcoeffs;
     univector<float> filteredBuffer;
+    univector<float> filteredBuffer2;
 
-    juce::dsp::WindowingFunction<float> hannWindow;
 };

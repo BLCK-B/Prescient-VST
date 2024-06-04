@@ -204,7 +204,6 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
-
         if (abs(sampleL) < 0.000000001 || abs(sampleR) < 0.000000001)
             continue;
 

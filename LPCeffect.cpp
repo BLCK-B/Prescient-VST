@@ -6,23 +6,38 @@ using namespace kfr;
 
 // constructor
 LPCeffect::LPCeffect() : inputBuffer(windowSize),
-                         filteredBuffer( windowSize),
-                         LPCcoeffs(modelOrder),
-                         hannWindow(windowSize, juce::dsp::WindowingFunction<float>::WindowingMethod::hann)
+                         inputBuffer2(windowSize),
+                         filteredBuffer(windowSize),
+                         filteredBuffer2(windowSize),
+                         LPCcoeffs(modelOrder)
 {
     jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
     std::fill(filteredBuffer.begin(), filteredBuffer.end(), 0);
+    std::fill(filteredBuffer2.begin(), filteredBuffer2.end(), 0);
 }
 
 // add received sample to buffer, send to processing once buffer full
 float LPCeffect::sendSample(float sample) {
     inputBuffer[index] = sample;
+    if (index2 >= hopSize & overlap != 0)
+        inputBuffer2[index2 - hopSize] = sample;
     ++index;
+    ++index2;
+
     if (index == windowSize) {
         index = 0;
+        activeBuffer = 1;
         doLPC();
     }
+    else if (index2 == hopSize + windowSize && overlap != 0) {
+        index2 = hopSize;
+        activeBuffer = 2;
+        doLPC();
+    }
+
     float output = filteredBuffer[index];
+    if (index2 >= hopSize & overlap != 0)
+        output += filteredBuffer2[index2 - hopSize];
 
     if (output == NULL)
         return 0.f;
@@ -34,8 +49,15 @@ void LPCeffect::doLPC() {
     autocorrelation();
     levinsonDurbin();
     filterFFT();
+
+//    if (activeBuffer == 1)
+//        filteredBuffer = hannWindow * inputBuffer;
+//    else
+//        filteredBuffer2 = hannWindow * inputBuffer2;
+
     corrCoeff.clear();
     LPCcoeffs.clear();
+
 }
 
 void::LPCeffect::autocorrelation() {
@@ -90,22 +112,38 @@ void LPCeffect::levinsonDurbin() {
 }
 
 void LPCeffect::filterFFT() {
-    std::fill(filteredBuffer.begin(), filteredBuffer.end(), 0);
     // white noise carrier
     for (int n = 0; n < windowSize; ++n) {
         float rnd = (float) (rand() % 1000);
-        rnd /= 10000000;
-        inputBuffer[n] = rnd;
+        rnd /= 100000000 * 0.5;
+        if (activeBuffer == 1)
+            inputBuffer[n] = rnd;
+        else
+            inputBuffer2[n] = rnd;
     }
 
     univector<float> paddedLPC(windowSize, 0.0f);
     std::copy(LPCcoeffs.begin(), LPCcoeffs.end(), paddedLPC.begin());
 
-    univector<std::complex<float>> X = realdft(inputBuffer);
+    univector<std::complex<float>> X;
+    if (activeBuffer == 1)
+        X = realdft(inputBuffer);
+    else
+        X = realdft(inputBuffer2);
     univector<std::complex<float>> H = realdft(paddedLPC);
     univector<std::complex<float>> Y = X / H;
-    filteredBuffer = irealdft(Y);
-    for (float & i : filteredBuffer) {
-        i *= 0.1;
+    if (activeBuffer == 1) {
+        filteredBuffer = irealdft(Y);
+        for (float &i: filteredBuffer) {
+            i *= 0.1;
+        }
+        filteredBuffer *= hannWindow;
+    }
+    else {
+        filteredBuffer2 = irealdft(Y);
+        for (float &i: filteredBuffer2) {
+            i *= 0.1;
+        }
+        filteredBuffer2 *= hannWindow;
     }
 }
