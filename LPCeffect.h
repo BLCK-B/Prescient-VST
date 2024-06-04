@@ -11,7 +11,7 @@ using namespace kfr;
 class LPCeffect {
 public:
     LPCeffect();
-    float sendSample(float sample);
+    float sendSample(float sample, float sidechain);
 
 private:
     void doLPC();

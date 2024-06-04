@@ -17,10 +17,10 @@ LPCeffect::LPCeffect() : inputBuffer(windowSize),
 }
 
 // add received sample to buffer, send to processing once buffer full
-float LPCeffect::sendSample(float sample) {
-    inputBuffer[index] = sample;
+float LPCeffect::sendSample(float sample, float sidechain) {
+    inputBuffer[index] = sample + sidechain;
     if (index2 >= hopSize & overlap != 0)
-        inputBuffer2[index2 - hopSize] = sample;
+        inputBuffer2[index2 - hopSize] = sample + sidechain;
     ++index;
     ++index2;
 

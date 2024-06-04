@@ -5,13 +5,10 @@
 //==============================================================================
 MyAudioProcessor::MyAudioProcessor()
     : AudioProcessor (BusesProperties()
-        #if ! JucePlugin_IsMidiEffect
-        #if ! JucePlugin_IsSynth
-        .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-        #endif
+        .withInput("Input",  juce::AudioChannelSet::stereo(), true)
+        .withInput("Sidechain",  juce::AudioChannelSet::stereo(), true)
         .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-        #endif
-    )
+        )
 {
     treeState.addParameterListener("flanger ratio", this);
     treeState.addParameterListener("flanger lfo", this);
@@ -195,15 +192,24 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
     //=================================================================================
+    auto mainInput = getBusBuffer (buffer, true, 0);
+    auto sideChain = getBusBuffer (buffer, true, 1);
+
     float factor = chainSettings.pitchShift;
     bool robot = chainSettings.robot;
-    float* channelL = buffer.getWritePointer(0);
-    float* channelR = buffer.getWritePointer(1);
+    float* channelL = mainInput.getWritePointer(0);
+    float* channelR = mainInput.getWritePointer(1);
+    float* chSidechainL = sideChain.getWritePointer(0);
+    float* chSidechainR = sideChain.getWritePointer(1);
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
 
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
+
+        float sampleSideChainL = chSidechainL[sample];
+        float sampleSideChainR = chSidechainR[sample];
+
         if (abs(sampleL) < 0.000000001 || abs(sampleR) < 0.000000001)
             continue;
 
@@ -215,8 +221,8 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
 //        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
-        sampleL = lpcEffect[0].sendSample(sampleL);
-        sampleR = lpcEffect[1].sendSample(sampleR);
+        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL);
+        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR);
 
 //        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
 
