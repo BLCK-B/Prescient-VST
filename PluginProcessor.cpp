@@ -16,8 +16,6 @@ MyAudioProcessor::MyAudioProcessor()
     treeState.addParameterListener("flanger depth", this);
     treeState.addParameterListener("flanger base", this);
     treeState.addParameterListener("pitch shift", this);
-    treeState.addParameterListener("robot", this);
-    treeState.addParameterListener("FFT", this);
 }
 
 MyAudioProcessor::~MyAudioProcessor()
@@ -32,8 +30,6 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.flangerDepth = treeState.getRawParameterValue("flanger depth")->load();
     settings.flangerBase = treeState.getRawParameterValue("flanger base")->load();
     settings.pitchShift = treeState.getRawParameterValue("pitch shift")->load();
-    settings.robot = treeState.getRawParameterValue("robot")->load();
-    settings.FFT = treeState.getRawParameterValue("FFT")->load();
 
     return settings;
 }
@@ -60,9 +56,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("pitch shift", "Pitch Shift",
             juce::NormalisableRange<float>(0.1f, 4.f, 0.01f, 0.5f), 1.f));
-
-    layout.add(std::make_unique<juce::AudioParameterBool>("robot", "Robot", false));
-    layout.add(std::make_unique<juce::AudioParameterBool>("FFT", "FFT", false));
 
     return layout;
 }
@@ -157,6 +150,7 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 //    lpCtests.FFTautocorrTest();
 //    lpCtests.levinsonDurbinTest();
 //    lpCtests.IIRfilterTest();
+//    lpCtests.convolutionTest();
 }
 
 void MyAudioProcessor::releaseResources()
@@ -195,8 +189,6 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     auto mainInput = getBusBuffer (buffer, true, 0);
     auto sideChain = getBusBuffer (buffer, true, 1);
 
-    float factor = chainSettings.pitchShift;
-    bool robot = chainSettings.robot;
     float* channelL = mainInput.getWritePointer(0);
     float* channelR = mainInput.getWritePointer(1);
     float* chSidechainL = sideChain.getWritePointer(0);
@@ -206,23 +198,24 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
-
         float sampleSideChainL = chSidechainL[sample];
+        std::cout<<"fine";
         float sampleSideChainR = chSidechainR[sample];
 
-        if (abs(sampleL) < 0.000000001 || abs(sampleR) < 0.000000001)
-            continue;
+//        if (abs(sampleL) < 0.000000001 || abs(sampleR) < 0.000000001)
+//            continue;
 
         // flanger
         //channelL[sample] = flangerEffect(sampleL);
         //channelR[sample] = flangerEffect(sampleR);
 
         // LPC
-//        sampleL = sampleR = rand() % 1000 / 1000.0;
+        sampleL = sampleR = rand() % 1000 / 1000.0;
+        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 //        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
         sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL);
-        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR);
+//        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR);
 
 //        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
 

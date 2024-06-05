@@ -7,7 +7,6 @@
 
 struct ChainSettings {
     float flangerRatio {0}, flangerLFO {0}, flangerInvert {0}, flangerDepth {0}, flangerBase {0}, pitchShift {0};
-    bool robot {false}, FFT {false};
 };
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState);
