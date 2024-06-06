@@ -5,14 +5,15 @@
 using namespace kfr;
 
 // constructor
-LPCeffect::LPCeffect() : inputBuffer1(windowSize),
-                         inputBuffer2(windowSize),
-                         filteredBuffer1(windowSize),
-                         filteredBuffer2(windowSize),
-                         sideChainBuffer1(windowSize),
-                         sideChainBuffer2(windowSize),
-                         residualsBuffer(windowSize),
-                         LPCcoeffs(modelOrder)
+LPCeffect::LPCeffect() :
+        LPCcoeffs(modelOrder),
+        residualsBuffer(windowSize),
+        inputBuffer1(windowSize),
+        inputBuffer2(windowSize),
+        sideChainBuffer1(windowSize),
+        sideChainBuffer2(windowSize),
+        filteredBuffer1(windowSize),
+        filteredBuffer2(windowSize)
 {
     jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
     std::fill(filteredBuffer1.begin(), filteredBuffer1.end(), 0);
@@ -24,7 +25,6 @@ LPCeffect::LPCeffect() : inputBuffer1(windowSize),
 
 // add received sample to buffer, send to processing once buffer full
 float LPCeffect::sendSample(float sample, float sidechain) {
-    std::cout<<"fine";
     inputBuffer1[index] = sample;
     sideChainBuffer1[index] = sidechain / 100;
     if (index2 >= hopSize & overlap != 0) {
@@ -61,10 +61,10 @@ void LPCeffect::doLPC(bool firstBuffers) {
     filterFFTsidechain(firstBuffers);
 }
 
-void::LPCeffect::autocorrelation(const univector<float>& fromBufer) {
+void::LPCeffect::autocorrelation(const univector<float>& fromBuffer) {
     corrCoeff.clear();
-    float avg = std::accumulate(fromBufer.begin(), fromBufer.end(), 0.0) / windowSize;
-    univector<float> subtracted = fromBufer - avg;
+    float avg = std::accumulate(fromBuffer.begin(), fromBuffer.end(), 0.0) / windowSize;
+    univector<float> subtracted = fromBuffer - avg;
     float stdDeviation = std::sqrt(std::inner_product(subtracted.begin(), subtracted.end(), subtracted.begin(), 0.0) / windowSize);
 
     univector<float> normalised = subtracted / stdDeviation;
@@ -79,7 +79,7 @@ void::LPCeffect::autocorrelation(const univector<float>& fromBufer) {
 }
 
 void LPCeffect::levinsonDurbin(bool voice, bool firstBuffers) {
-    if (voice)
+    if (!voice)
         LPCcoeffs.clear();
     std::vector<float> k(modelOrder + 1);
     std::vector<float> E(modelOrder + 1);
@@ -110,31 +110,31 @@ void LPCeffect::levinsonDurbin(bool voice, bool firstBuffers) {
         E[i-1] = (1 - kTo2) * E[i - 2];
     }
     if (!voice) {
-        for (int x = 0; x <= modelOrder; ++x) {
+        for (int x = 0; x <= modelOrder; ++x)
             LPCcoeffs.push_back(a[modelOrder][modelOrder - x]);
-        }
     }
     else {
         univector<float> LPCvoice(modelOrder);
-        for (int x = 0; x <= modelOrder; ++x) {
+        for (int x = 0; x <= modelOrder; ++x)
             LPCvoice.push_back(a[modelOrder][modelOrder - x]);
-        }
         univector<float> convRes = firstBuffers ? convolve(sideChainBuffer1, LPCvoice) : convolve(sideChainBuffer2, LPCvoice);
         float diff = ((float) (convRes.size() - windowSize)) / 2;
         univector<float> e(convRes.begin() + 1 + std::floor(diff), convRes.end() - std::ceil(diff));
         if (firstBuffers)
-            sideChainBuffer1 = e;
+            std::copy(e.begin(), e.end(), sideChainBuffer1.begin());
         else
-            sideChainBuffer2 = e;
+            std::copy(e.begin(), e.end(), sideChainBuffer2.begin());
     }
 }
 
 void LPCeffect::filterFFTsidechain(bool firstBuffers) {
-    univector<float> paddedLPC(LPCcoeffs.begin(), LPCcoeffs.end());
+    univector<float> paddedLPC(windowSize, 0.0f);
+    std::copy(LPCcoeffs.begin(), LPCcoeffs.end(), paddedLPC.begin());
 
     univector<std::complex<float>> X = firstBuffers ? realdft(sideChainBuffer1) : realdft(sideChainBuffer2);
     univector<std::complex<float>> H = realdft(paddedLPC);
     univector<std::complex<float>> Y = X / H;
+
     if (firstBuffers) {
         filteredBuffer1 = irealdft(Y);
         for (float &x: filteredBuffer1)

@@ -24,7 +24,7 @@ private:
 //    const int windowSize = 2048;
     univector<fbase, 4096> hannWindow = window_hann(4096);
 
-    const int modelOrder = 100;
+    const int modelOrder = 80;
     int index = 0;
     int index2 = 0;
 
