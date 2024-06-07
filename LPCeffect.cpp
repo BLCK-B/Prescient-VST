@@ -7,8 +7,8 @@ using namespace kfr;
 // constructor
 LPCeffect::LPCeffect() :
         residualsBuffer(windowSize),
-        inputBuffer1(windowSize),
-        inputBuffer2(windowSize),
+        carrierBuffer1(windowSize),
+        carrierBuffer2(windowSize),
         sideChainBuffer1(windowSize),
         sideChainBuffer2(windowSize),
         filteredBuffer1(windowSize),
@@ -20,12 +20,12 @@ LPCeffect::LPCeffect() :
 }
 
 // add received sample to buffer, send to processing once buffer full
-float LPCeffect::sendSample(float sample, float sidechain) {
-    inputBuffer1[index] = sample;
-    sideChainBuffer1[index] = sidechain / 100;
+float LPCeffect::sendSample(float carrierSample, float voiceSample) {
+    carrierBuffer1[index] = carrierSample / 100;
+    sideChainBuffer1[index] = voiceSample / 100;
     if (index2 >= hopSize & overlap != 0) {
-        inputBuffer2[index2 - hopSize] = sample;
-        sideChainBuffer2[index2 - hopSize] = sidechain / 100;
+        carrierBuffer2[index2 - hopSize] = carrierSample / 100;
+        sideChainBuffer2[index2 - hopSize] = voiceSample / 100;
     }
     ++index;
     ++index2;
@@ -50,13 +50,13 @@ float LPCeffect::sendSample(float sample, float sidechain) {
 }
 
 void LPCeffect::doLPC(bool firstBuffers) {
-    univector<float> LPC = firstBuffers ? levinsonDurbin(inputBuffer1) : levinsonDurbin(inputBuffer2);
-    univector<float> e = firstBuffers ? getResiduals(sideChainBuffer1) : getResiduals(sideChainBuffer2);
+    univector<float> LPCvoice = firstBuffers ? levinsonDurbin(sideChainBuffer1) : levinsonDurbin(sideChainBuffer2);
+    univector<float> e = firstBuffers ? getResiduals(carrierBuffer1) : getResiduals(carrierBuffer2);
 
     if (firstBuffers)
-        filteredBuffer1 = filterFFTsidechain(LPC, e);
+        filteredBuffer1 = filterFFTsidechain(LPCvoice, e);
     else
-        filteredBuffer2 = filterFFTsidechain(LPC, e);
+        filteredBuffer2 = filterFFTsidechain(LPCvoice, e);
 }
 
 void LPCeffect::autocorrelation(const univector<float>& ofBuffer) {
@@ -121,9 +121,17 @@ univector<float> LPCeffect::getResiduals(const univector<float>& ofBuffer) {
     return e;
 }
 
-univector<float> LPCeffect::filterFFTsidechain(const univector<float>& LPC, const univector<float>& e) {
+univector<float> LPCeffect::filterFFTsidechain(const univector<float>& LPCvoice, const univector<float>& e) {
     univector<float> paddedLPC(windowSize, 0.0f);
-    std::copy(LPC.begin(), LPC.end(), paddedLPC.begin());
+    std::copy(LPCvoice.begin(), LPCvoice.end(), paddedLPC.begin());
+
+    // white noise
+//    univector<float> newE(windowSize);
+//    for (int n = 0; n < windowSize; ++n) {
+//        float rnd = (float) (rand() % 1000);
+//        rnd /= 100000000 * 0.5;
+//        newE[n] = rnd;
+//    }
 
     univector<std::complex<float>> X = realdft(e);
     univector<std::complex<float>> H = realdft(paddedLPC);
@@ -136,13 +144,3 @@ univector<float> LPCeffect::filterFFTsidechain(const univector<float>& LPC, cons
 
     return filtered;
 }
-
-// white noise
-//    for (int n = 0; n < windowSize; ++n) {
-//        float rnd = (float) (rand() % 1000);
-//        rnd /= 100000000 * 0.5;
-//        if (activeBuffer == 1)
-//            inputBuffer[n] = rnd;
-//        else
-//            inputBuffer2[n] = rnd;
-//    }

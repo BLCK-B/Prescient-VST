@@ -25,7 +25,7 @@ private:
 //    const int windowSize = 2048;
     univector<fbase, 4096> hannWindow = window_hann(4096);
 
-    const int modelOrder = 80;
+    const int modelOrder = 70;
     int index = 0;
     int index2 = 0;
 
@@ -33,12 +33,10 @@ private:
     const int overlapSize = round(windowSize * overlap);
     const int hopSize = windowSize - overlapSize;
 
-    // arbitrary
     univector<float> corrCoeff;
     univector<float> residualsBuffer;
-    // specific
-    univector<float> inputBuffer1;
-    univector<float> inputBuffer2;
+    univector<float> carrierBuffer1;
+    univector<float> carrierBuffer2;
     univector<float> sideChainBuffer1;
     univector<float> sideChainBuffer2;
     univector<float> filteredBuffer1;

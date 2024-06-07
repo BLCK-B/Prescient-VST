@@ -146,11 +146,11 @@ class LPCtests {
         // logic
         univector<float> convRes = convolve(inp, LPC);
         float diff = ((float) (convRes.size() - inp.size())) / 2;
-        univector<float> e(convRes.begin() + 1 + std::floor(diff), convRes.end() - std::ceil(diff));
+        univector<float> e(convRes.begin() + std::floor(diff), convRes.end() - std::ceil(diff));
 
         // verification
         bool pass = true;
-        univector<float> expected = {0.28, 0.48, 0.68, 0.88, 0.96, 1.04, 0.71};
+        univector<float> expected = {0.16, 0.28, 0.48, 0.68, 0.88, 0.96, 1.04, 0.71};
         for (int i = 0; i < expected.size(); ++i) {
             if (std::abs(e[i] - expected[i]) > 0.0001)
                 pass = false;
