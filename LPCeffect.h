@@ -16,15 +16,16 @@ public:
 private:
     void doLPC(bool firstBuffers);
     void autocorrelation(const univector<float>& fromBufer);
-    void levinsonDurbin(bool voice, bool firstBuffers);
-    void filterFFTsidechain(bool firstBuffers);
+    univector<float> levinsonDurbin(const univector<float>& ofBuffer);
+    univector<float> getResiduals(const univector<float>& ofBuffer);
+    univector<float> filterFFTsidechain(const univector<float>& LPC, const univector<float>& e);
 
 //    const int windowSize = 8192;
     const int windowSize = 4096;
 //    const int windowSize = 2048;
     univector<fbase, 4096> hannWindow = window_hann(4096);
 
-    const int modelOrder = 80;
+    const int modelOrder = 100;
     int index = 0;
     int index2 = 0;
 
@@ -34,7 +35,6 @@ private:
 
     // arbitrary
     univector<float> corrCoeff;
-    univector<float> LPCcoeffs;
     univector<float> residualsBuffer;
     // specific
     univector<float> inputBuffer1;

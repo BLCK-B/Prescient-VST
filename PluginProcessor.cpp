@@ -189,11 +189,10 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
-//        float sampleSideChainL = sideChain.getNumSamples() == 2 ? sideChain.getReadPointer(0)[sample] : 0;
-//        float sampleSideChainR = sideChain.getNumSamples() == 2 ? sideChain.getReadPointer(1)[sample] : 0;
         float sampleSideChainL = sideChain.getReadPointer(0)[sample];
         float sampleSideChainR = sideChain.getReadPointer(1)[sample];
-
+//        float sampleSideChainL = 0;
+//        float sampleSideChainR = 0;
         if (abs(sampleL) < 0.000000001 || abs(sampleR) < 0.000000001)
             continue;
 
