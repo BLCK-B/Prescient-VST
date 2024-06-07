@@ -15,7 +15,7 @@ public:
 
 private:
     void doLPC(bool firstBuffers);
-    void autocorrelation(const univector<float>& fromBufer);
+    univector<float> autocorrelation(const univector<float>& fromBufer);
     univector<float> levinsonDurbin(const univector<float>& ofBuffer);
     univector<float> getResiduals(const univector<float>& ofBuffer);
     univector<float> filterFFTsidechain(const univector<float>& LPC, const univector<float>& e);
@@ -25,7 +25,7 @@ private:
 //    const int windowSize = 2048;
     univector<fbase, 4096> hannWindow = window_hann(4096);
 
-    const int modelOrder = 100;
+    const int modelOrder = 80;
     int index = 0;
     int index2 = 0;
 
@@ -33,10 +33,6 @@ private:
     const int overlapSize = round(windowSize * overlap);
     const int hopSize = windowSize - overlapSize;
 
-    // arbitrary
-    univector<float> corrCoeff;
-    univector<float> residualsBuffer;
-    // specific
     univector<float> inputBuffer1;
     univector<float> inputBuffer2;
     univector<float> sideChainBuffer1;
