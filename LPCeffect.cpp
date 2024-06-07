@@ -6,6 +6,7 @@ using namespace kfr;
 
 // constructor
 LPCeffect::LPCeffect() :
+        residualsBuffer(windowSize),
         inputBuffer1(windowSize),
         inputBuffer2(windowSize),
         sideChainBuffer1(windowSize),
@@ -16,6 +17,9 @@ LPCeffect::LPCeffect() :
     jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
     std::fill(filteredBuffer1.begin(), filteredBuffer1.end(), 0);
     std::fill(filteredBuffer2.begin(), filteredBuffer2.end(), 0);
+    std::fill(sideChainBuffer1.begin(), sideChainBuffer1.end(), 0);
+    std::fill(sideChainBuffer2.begin(), sideChainBuffer2.end(), 0);
+    std::fill(residualsBuffer.begin(), residualsBuffer.end(), 0);
 }
 
 // add received sample to buffer, send to processing once buffer full
@@ -58,7 +62,8 @@ void LPCeffect::doLPC(bool firstBuffers) {
         filteredBuffer2 = filterFFTsidechain(LPC, e);
 }
 
-univector<float> LPCeffect::autocorrelation(const univector<float>& ofBuffer) {
+void::LPCeffect::autocorrelation(const univector<float>& ofBuffer) {
+    corrCoeff.clear();
     float avg = std::accumulate(ofBuffer.begin(), ofBuffer.end(), 0.0) / windowSize;
     univector<float> subtracted = ofBuffer - avg;
     float stdDeviation = std::sqrt(std::inner_product(subtracted.begin(), subtracted.end(), subtracted.begin(), 0.0) / windowSize);
@@ -70,14 +75,12 @@ univector<float> LPCeffect::autocorrelation(const univector<float>& ofBuffer) {
     for (int i = 0; i < fftBuffer.size(); ++i)
         powerSpDen[i] = std::abs(fftBuffer[i]) * std::abs(fftBuffer[i]);
     univector<float> ifftBuffer = irealdft(powerSpDen);
-    univector<float> corrCoeff(windowSize / 2);
     for (int i = 0; i < windowSize / 2; ++i)
         corrCoeff.push_back(ifftBuffer[i] / windowSize * 0.1);
-    return corrCoeff;
 }
 
 univector<float> LPCeffect::levinsonDurbin(const univector<float>& ofBuffer) {
-    const univector<float> corrCoeff = autocorrelation(ofBuffer);
+    autocorrelation(ofBuffer);
 
     std::vector<float> k(modelOrder + 1);
     std::vector<float> E(modelOrder + 1);
@@ -118,6 +121,7 @@ univector<float> LPCeffect::getResiduals(const univector<float>& ofBuffer) {
     univector<float> convRes = convolve(ofBuffer, LPC);
     float diff = ((float) (convRes.size() - windowSize)) / 2;
     univector<float> e(convRes.begin() + std::floor(diff), convRes.end() - std::ceil(diff));
+
     return e;
 }
 
