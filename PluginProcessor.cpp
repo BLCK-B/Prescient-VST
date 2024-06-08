@@ -151,6 +151,7 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 //    lpCtests.levinsonDurbinTest();
 //    lpCtests.IIRfilterTest();
 //    lpCtests.convolutionTest();
+//    lpCtests.convolutionFFT();
 }
 
 void MyAudioProcessor::releaseResources()

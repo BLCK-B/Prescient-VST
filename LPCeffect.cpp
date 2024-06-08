@@ -115,9 +115,19 @@ univector<float> LPCeffect::levinsonDurbin(const univector<float>& ofBuffer) {
 
 univector<float> LPCeffect::getResiduals(const univector<float>& ofBuffer) {
     univector<float> LPC = levinsonDurbin(ofBuffer);
-    univector<float> convRes = convolve(ofBuffer, LPC);
-    float diff = ((float) (convRes.size() - windowSize)) / 2;
-    univector<float> e(convRes.begin() + std::floor(diff), convRes.end() - std::ceil(diff));
+//    univector<float> convRes = convolve(ofBuffer, LPC);
+//    float diff = ((float) (convRes.size() - windowSize)) / 2;
+//    univector<float> e(convRes.begin() + std::floor(diff), convRes.end() - std::ceil(diff));
+
+    univector<float> paddedLPC(ofBuffer.size(), 0.0f);
+    std::copy(LPC.begin(), LPC.end(), paddedLPC.begin());
+    univector<std::complex<float>> X = realdft(ofBuffer);
+    univector<std::complex<float>> H = realdft(paddedLPC);
+    univector<std::complex<float>> Y = X * H;
+    univector<float> e = irealdft(Y);
+    for (float &x : e)
+        x *= 0.1;
+
     return e;
 }
 
@@ -138,7 +148,7 @@ univector<float> LPCeffect::filterFFTsidechain(const univector<float>& LPCvoice,
     univector<std::complex<float>> Y = X / H;
 
     univector<float> filtered = irealdft(Y);
-    for (float &x: filtered)
+    for (float &x : filtered)
         x *= 0.1;
     filtered *= hannWindow;
 
