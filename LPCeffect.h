@@ -19,6 +19,7 @@ private:
     univector<float> levinsonDurbin(const univector<float>& ofBuffer);
     univector<float> getResiduals(const univector<float>& ofBuffer);
     univector<float> filterFFTsidechain(const univector<float>& LPC, const univector<float>& e);
+    float matchPower(univector<float>& original, univector<float>& output);
 
 //    const int windowSize = 8192;
     const int windowSize = 4096;

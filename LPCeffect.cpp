@@ -53,10 +53,34 @@ void LPCeffect::doLPC(bool firstBuffers) {
     univector<float> LPCvoice = firstBuffers ? levinsonDurbin(sideChainBuffer1) : levinsonDurbin(sideChainBuffer2);
     univector<float> e = firstBuffers ? getResiduals(carrierBuffer1) : getResiduals(carrierBuffer2);
 
-    if (firstBuffers)
+    if (firstBuffers) {
         filteredBuffer1 = filterFFTsidechain(LPCvoice, e);
-    else
+
+        float scalingFactor = matchPower(sideChainBuffer1, filteredBuffer1);
+        for (auto &sample: filteredBuffer1)
+            sample *= scalingFactor * 20 ;
+    }
+    else {
         filteredBuffer2 = filterFFTsidechain(LPCvoice, e);
+
+        float scalingFactor = matchPower(sideChainBuffer2, filteredBuffer2);
+        for (auto& sample : filteredBuffer2)
+            sample *= scalingFactor * 20;
+    }
+
+}
+
+float LPCeffect::matchPower(univector<float>& original, univector<float>& output) {
+    float sumOfSquares = 0.0;
+    for (const auto& sample : original)
+        sumOfSquares += sample * sample;
+    float signalPower = std::sqrt(sumOfSquares / windowSize);
+    sumOfSquares = 0.0;
+    for (const auto& sample : output)
+        sumOfSquares += sample * sample;
+    float signalPower2 = std::sqrt(sumOfSquares / windowSize);
+
+    return signalPower / signalPower2;
 }
 
 void LPCeffect::autocorrelation(const univector<float>& ofBuffer) {
@@ -115,15 +139,10 @@ univector<float> LPCeffect::levinsonDurbin(const univector<float>& ofBuffer) {
 
 univector<float> LPCeffect::getResiduals(const univector<float>& ofBuffer) {
     univector<float> LPC = levinsonDurbin(ofBuffer);
-//    univector<float> convRes = convolve(ofBuffer, LPC);
-//    float diff = ((float) (convRes.size() - windowSize)) / 2;
-//    univector<float> e(convRes.begin() + std::floor(diff), convRes.end() - std::ceil(diff));
 
     univector<float> paddedLPC(ofBuffer.size(), 0.0f);
     std::copy(LPC.begin(), LPC.end(), paddedLPC.begin());
-    univector<std::complex<float>> X = realdft(ofBuffer);
-    univector<std::complex<float>> H = realdft(paddedLPC);
-    univector<std::complex<float>> Y = X * H;
+    univector<std::complex<float>> Y = realdft(ofBuffer) * realdft(paddedLPC);
     univector<float> e = irealdft(Y);
     for (float &x : e)
         x *= 0.1;
@@ -143,10 +162,7 @@ univector<float> LPCeffect::filterFFTsidechain(const univector<float>& LPCvoice,
 //        newE[n] = rnd;
 //    }
 
-    univector<std::complex<float>> X = realdft(e);
-    univector<std::complex<float>> H = realdft(paddedLPC);
-    univector<std::complex<float>> Y = X / H;
-
+    univector<std::complex<float>> Y = realdft(e) / realdft(paddedLPC);
     univector<float> filtered = irealdft(Y);
     for (float &x : filtered)
         x *= 0.1;
