@@ -3,9 +3,11 @@
 #include <kfr/dsp.hpp>
 #include <kfr/dft.hpp>
 using namespace kfr;
+using namespace std::chrono;
 
 // constructor
 LPCeffect::LPCeffect() :
+        corrCoeff(windowSize / 2),
         residualsBuffer(windowSize),
         carrierBuffer1(windowSize),
         carrierBuffer2(windowSize),
@@ -21,11 +23,11 @@ LPCeffect::LPCeffect() :
 
 // add received sample to buffer, send to processing once buffer full
 float LPCeffect::sendSample(float carrierSample, float voiceSample) {
-    carrierBuffer1[index] = carrierSample / 100;
-    sideChainBuffer1[index] = voiceSample / 100;
+    carrierBuffer1[index] = carrierSample;
+    sideChainBuffer1[index] = voiceSample;
     if (index2 >= hopSize & overlap != 0) {
-        carrierBuffer2[index2 - hopSize] = carrierSample / 100;
-        sideChainBuffer2[index2 - hopSize] = voiceSample / 100;
+        carrierBuffer2[index2 - hopSize] = carrierSample;
+        sideChainBuffer2[index2 - hopSize] = voiceSample;
     }
     ++index;
     ++index2;
@@ -43,9 +45,6 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
     if (index2 >= hopSize & overlap != 0)
         output += filteredBuffer2[index2 - hopSize];
 
-    if (output == NULL)
-        return 0.f;
-
     return output;
 }
 
@@ -55,26 +54,20 @@ void LPCeffect::doLPC(bool firstBuffers) {
 
     if (firstBuffers) {
         filteredBuffer1 = filterFFTsidechain(LPCvoice, e);
-
-        float scalingFactor = matchPower(sideChainBuffer1, filteredBuffer1);
-        for (auto &sample: filteredBuffer1)
-            sample *= scalingFactor * 20 ;
+        filteredBuffer1 = mul(filteredBuffer1, matchPower(sideChainBuffer1, filteredBuffer1));
     }
     else {
         filteredBuffer2 = filterFFTsidechain(LPCvoice, e);
-
-        float scalingFactor = matchPower(sideChainBuffer2, filteredBuffer2);
-        for (auto& sample : filteredBuffer2)
-            sample *= scalingFactor * 20;
+        filteredBuffer2 = mul(filteredBuffer2, matchPower(sideChainBuffer2, filteredBuffer2));
     }
-
 }
 
-float LPCeffect::matchPower(univector<float>& original, univector<float>& output) {
+float LPCeffect::matchPower(const univector<float>& original, const univector<float>& output) {
     float sumOfSquares = 0.0;
     for (const auto& sample : original)
         sumOfSquares += sample * sample;
     float signalPower = std::sqrt(sumOfSquares / windowSize);
+
     sumOfSquares = 0.0;
     for (const auto& sample : output)
         sumOfSquares += sample * sample;
@@ -84,20 +77,13 @@ float LPCeffect::matchPower(univector<float>& original, univector<float>& output
 }
 
 void LPCeffect::autocorrelation(const univector<float>& ofBuffer) {
-    corrCoeff.clear();
-    float avg = std::accumulate(ofBuffer.begin(), ofBuffer.end(), 0.0) / windowSize;
-    univector<float> subtracted = ofBuffer - avg;
-    float stdDeviation = std::sqrt(std::inner_product(subtracted.begin(), subtracted.end(), subtracted.begin(), 0.0) / windowSize);
-
-    univector<float> normalised = subtracted / stdDeviation;
-
-    univector<std::complex<float>> fftBuffer = realdft(normalised);
-    univector<std::complex<float>> powerSpDen(fftBuffer.size());
-    for (int i = 0; i < fftBuffer.size(); ++i)
-        powerSpDen[i] = std::abs(fftBuffer[i]) * std::abs(fftBuffer[i]);
-    univector<float> ifftBuffer = irealdft(powerSpDen);
-    for (int i = 0; i < windowSize / 2; ++i)
-        corrCoeff.push_back(ifftBuffer[i] / windowSize * 0.1);
+    // Wiener–Khinchin theorem
+    // TODO: better nominal and padding?
+    univector<std::complex<float>> fftBuffer = realdft(ofBuffer);
+    univector<std::complex<float>> fftBufferConj = cconj(fftBuffer);
+    std::transform(fftBuffer.begin(), fftBuffer.end(), fftBufferConj.begin(), fftBuffer.begin(), std::multiplies<>());
+    corrCoeff = irealdft(fftBuffer);
+    corrCoeff /= corrCoeff.size();
 }
 
 univector<float> LPCeffect::levinsonDurbin(const univector<float>& ofBuffer) {
@@ -134,39 +120,50 @@ univector<float> LPCeffect::levinsonDurbin(const univector<float>& ofBuffer) {
     univector<float> LPCcoeffs(modelOrder);
     for (int x = 0; x <= modelOrder; ++x)
         LPCcoeffs.push_back(a[modelOrder][modelOrder - x]);
+
     return LPCcoeffs;
 }
 
 univector<float> LPCeffect::getResiduals(const univector<float>& ofBuffer) {
     univector<float> LPC = levinsonDurbin(ofBuffer);
-
-    univector<float> paddedLPC(ofBuffer.size(), 0.0f);
-    std::copy(LPC.begin(), LPC.end(), paddedLPC.begin());
-    univector<std::complex<float>> Y = realdft(ofBuffer) * realdft(paddedLPC);
-    univector<float> e = irealdft(Y);
-    for (float &x : e)
-        x *= 0.1;
-
+    univector<float> e = FFToperations(FFToperation::Convolution, ofBuffer, LPC);
+    e = mul(e, 0.1);
     return e;
 }
 
 univector<float> LPCeffect::filterFFTsidechain(const univector<float>& LPCvoice, const univector<float>& e) {
-    univector<float> paddedLPC(windowSize, 0.0f);
-    std::copy(LPCvoice.begin(), LPCvoice.end(), paddedLPC.begin());
+    univector<float> filtered = FFToperations(FFToperation::IIR, e, LPCvoice);
+    filtered = mul(filtered, 0.0001);
+    // faster than filtered *= hannWindow
+    std::transform(filtered.begin(), filtered.end(), hannWindow.begin(), filtered.begin(), std::multiplies<>());
 
-    // white noise
+    return filtered;
+}
+
+univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients) {
+    univector<float> paddedCoeff(windowSize);
+    std::copy(coefficients.begin(), coefficients.end(), paddedCoeff.begin());
+
+    univector<std::complex<float>> fftInp = realdft(inputBuffer);
+    univector<std::complex<float>> fftCoeff = realdft(paddedCoeff);
+    univector<std::complex<float>> fftResult(fftInp.size());
+
+    // faster multiplication/division than * or /
+    switch (o) {
+        case FFToperation::Convolution:
+            std::transform(fftInp.begin(), fftInp.end(), fftCoeff.begin(), fftResult.begin(), std::multiplies<>());
+            break;
+        case FFToperation::IIR:
+            std::transform(fftInp.begin(), fftInp.end(), fftCoeff.begin(), fftResult.begin(), std::divides<>());
+            break;
+    }
+    return irealdft(fftResult);
+}
+
+//     white noise
 //    univector<float> newE(windowSize);
 //    for (int n = 0; n < windowSize; ++n) {
 //        float rnd = (float) (rand() % 1000);
 //        rnd /= 100000000 * 0.5;
 //        newE[n] = rnd;
 //    }
-
-    univector<std::complex<float>> Y = realdft(e) / realdft(paddedLPC);
-    univector<float> filtered = irealdft(Y);
-    for (float &x : filtered)
-        x *= 0.1;
-    filtered *= hannWindow;
-
-    return filtered;
-}

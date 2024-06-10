@@ -147,10 +147,8 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     LPCtests lpCtests;
 
-//    lpCtests.FFTautocorrTest();
 //    lpCtests.levinsonDurbinTest();
 //    lpCtests.IIRfilterTest();
-//    lpCtests.convolutionTest();
 //    lpCtests.convolutionFFT();
 }
 
