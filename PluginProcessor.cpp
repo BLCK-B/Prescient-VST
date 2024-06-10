@@ -5,13 +5,10 @@
 //==============================================================================
 MyAudioProcessor::MyAudioProcessor()
     : AudioProcessor (BusesProperties()
-        #if ! JucePlugin_IsMidiEffect
-        #if ! JucePlugin_IsSynth
-        .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-        #endif
+        .withInput("Input",  juce::AudioChannelSet::stereo(), true)
+        .withInput("Sidechain",  juce::AudioChannelSet::stereo(), true)
         .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-        #endif
-    )
+        )
 {
     treeState.addParameterListener("flanger ratio", this);
     treeState.addParameterListener("flanger lfo", this);
@@ -19,8 +16,6 @@ MyAudioProcessor::MyAudioProcessor()
     treeState.addParameterListener("flanger depth", this);
     treeState.addParameterListener("flanger base", this);
     treeState.addParameterListener("pitch shift", this);
-    treeState.addParameterListener("robot", this);
-    treeState.addParameterListener("FFT", this);
 }
 
 MyAudioProcessor::~MyAudioProcessor()
@@ -35,8 +30,6 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.flangerDepth = treeState.getRawParameterValue("flanger depth")->load();
     settings.flangerBase = treeState.getRawParameterValue("flanger base")->load();
     settings.pitchShift = treeState.getRawParameterValue("pitch shift")->load();
-    settings.robot = treeState.getRawParameterValue("robot")->load();
-    settings.FFT = treeState.getRawParameterValue("FFT")->load();
 
     return settings;
 }
@@ -63,9 +56,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("pitch shift", "Pitch Shift",
             juce::NormalisableRange<float>(0.1f, 4.f, 0.01f, 0.5f), 1.f));
-
-    layout.add(std::make_unique<juce::AudioParameterBool>("robot", "Robot", false));
-    layout.add(std::make_unique<juce::AudioParameterBool>("FFT", "FFT", false));
 
     return layout;
 }
@@ -160,6 +150,8 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 //    lpCtests.FFTautocorrTest();
 //    lpCtests.levinsonDurbinTest();
 //    lpCtests.IIRfilterTest();
+//    lpCtests.convolutionTest();
+//    lpCtests.convolutionFFT();
 }
 
 void MyAudioProcessor::releaseResources()
@@ -169,21 +161,14 @@ void MyAudioProcessor::releaseResources()
 
 bool MyAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-  #if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
-    return true;
-  #else
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
-    // This checks if the input layout matches the output layout
-   #if ! JucePlugin_IsSynth
+
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
-   #endif
 
     return true;
-  #endif
 }
 
 void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
@@ -195,15 +180,20 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
     //=================================================================================
-    float factor = chainSettings.pitchShift;
-    bool robot = chainSettings.robot;
-    float* channelL = buffer.getWritePointer(0);
-    float* channelR = buffer.getWritePointer(1);
+    auto mainInput = getBusBuffer (buffer, true, 0);
+    auto sideChain = getBusBuffer (buffer, true, 1);
+
+    float* channelL = mainInput.getWritePointer(0);
+    float* channelR = mainInput.getWritePointer(1);
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
 
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
+        float sampleSideChainL = sideChain.getReadPointer(0)[sample];
+        float sampleSideChainR = sideChain.getReadPointer(1)[sample];
+//        float sampleSideChainL = 0;
+//        float sampleSideChainR = 0;
         if (abs(sampleL) < 0.000000001 || abs(sampleR) < 0.000000001)
             continue;
 
@@ -213,10 +203,11 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
         // LPC
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
+//        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 //        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
-        sampleL = lpcEffect[0].sendSample(sampleL);
-        sampleR = lpcEffect[1].sendSample(sampleR);
+        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL);
+        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR);
 
 //        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
 

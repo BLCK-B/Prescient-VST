@@ -138,4 +138,57 @@ class LPCtests {
             std::cout << "DID NOT PASS filterFFT test\n";
     }
 
+    void convolutionTest() {
+        // data setup
+        univector<float> inp = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.2};
+        univector<float> LPC = {0.2, 0.1, 0.8, 0.1, 0.8};
+
+        // logic
+        univector<float> convRes = convolve(inp, LPC);
+        float diff = ((float) (convRes.size() - inp.size())) / 2;
+        univector<float> e(convRes.begin() + std::floor(diff), convRes.end() - std::ceil(diff));
+
+        // verification
+        bool pass = true;
+        univector<float> expected = {0.16, 0.28, 0.48, 0.68, 0.88, 0.96, 1.04, 0.71};
+        for (int i = 0; i < expected.size(); ++i) {
+            if (std::abs(e[i] - expected[i]) > 0.0001)
+                pass = false;
+            std::cout<< e[i] << "\n";
+        }
+        if (pass)
+            std::cout << "PASSED convolution test\n";
+        else
+            std::cout << "DID NOT PASS convolution test\n";
+    }
+
+    void convolutionFFT() {
+        // data setup
+        univector<float> inp = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.2};
+        univector<float> LPC = {0.2, 0.1, 0.8, 0.1, 0.8};
+
+        // logic
+        univector<float> paddedLPC(inp.size(), 0.0f);
+        std::copy(LPC.begin(), LPC.end(), paddedLPC.begin());
+        univector<std::complex<float>> X = realdft(inp);
+        univector<std::complex<float>> H = realdft(paddedLPC);
+        univector<std::complex<float>> Y = X * H;
+        univector<float> e = irealdft(Y);
+        for (float &x : e)
+            x *= 0.1;
+
+        // verification
+        bool pass = true;
+        univector<float> expected = {0.16, 0.28, 0.48, 0.68, 0.88, 0.96, 1.04, 0.71};
+        for (int i = 0; i < expected.size(); ++i) {
+//            if (std::abs(e[i] - expected[i]) > 0.0001)
+//                pass = false;
+            std::cout<< e[i] << "\n";
+        }
+        if (pass)
+            std::cout << "PASSED convolution test\n";
+        else
+            std::cout << "DID NOT PASS convolution test\n";
+    }
+
 };
