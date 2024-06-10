@@ -14,18 +14,24 @@ public:
     float sendSample(float sample, float sidechain);
 
 private:
+    enum class FFToperation {
+        Convolution, IIR
+    };
+
     void doLPC(bool firstBuffers);
     void autocorrelation(const univector<float>& fromBufer);
     univector<float> levinsonDurbin(const univector<float>& ofBuffer);
     univector<float> getResiduals(const univector<float>& ofBuffer);
     univector<float> filterFFTsidechain(const univector<float>& LPC, const univector<float>& e);
+    float matchPower(const univector<float>& original, const univector<float>& output);
+    univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients);
 
 //    const int windowSize = 8192;
     const int windowSize = 4096;
 //    const int windowSize = 2048;
     univector<fbase, 4096> hannWindow = window_hann(4096);
 
-    const int modelOrder = 80;
+    const int modelOrder = 70;
     int index = 0;
     int index2 = 0;
 

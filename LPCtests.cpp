@@ -7,42 +7,6 @@ class LPCtests {
 
     public:
 
-    void FFTautocorrTest()
-    {
-        // data setup
-        univector<float> inputBuffer = {0.5, 0.4, 0.3, 0.2, 0.5, 0.4, 0.2, 0.1, 0.5, 0.8};
-        const int windowSize = inputBuffer.size();
-        univector<float> corrCoeff;
-
-        // logic
-        float avg = std::accumulate(inputBuffer.begin(), inputBuffer.end(), 0.0) / windowSize;
-        univector<float> subtracted = inputBuffer - avg;
-        float stdDeviation = std::sqrt(std::inner_product(subtracted.begin(), subtracted.end(), subtracted.begin(), 0.0) / windowSize);
-
-        univector<float> normalised = subtracted / stdDeviation;
-
-        univector<std::complex<float>> fftBuffer = realdft(normalised);
-        univector<std::complex<float>> powerSpDen(fftBuffer.size());
-        for (int i = 0; i < fftBuffer.size(); ++i)
-            powerSpDen[i] = std::abs(fftBuffer[i]) * std::abs(fftBuffer[i]);
-        univector<float> ifftBuffer = irealdft(powerSpDen);
-        for (int i = 0; i < windowSize / 2; ++i)
-            corrCoeff.push_back(ifftBuffer[i] / windowSize * 0.1);
-
-        // verification
-        bool pass = true;
-        std::vector<float> expected = {1.0, 0.295, -0.463, -0.436, -0.029};
-        for (int k = 0; k < corrCoeff.size(); ++k) {
-            std::cout << corrCoeff[k] << "\n";
-            if (std::abs(corrCoeff[k] - expected[k]) > 0.01)
-                pass = false;
-        }
-        if (pass)
-            std::cout << "PASSED FFTautocorrelation test\n";
-        else
-            std::cout << "DID NOT PASS FFTautocorrelation test\n";
-    }
-
     void levinsonDurbinTest()
     {
         // data setup
@@ -136,30 +100,6 @@ class LPCtests {
             std::cout << "PASSED filterFFT test\n";
         else
             std::cout << "DID NOT PASS filterFFT test\n";
-    }
-
-    void convolutionTest() {
-        // data setup
-        univector<float> inp = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.2};
-        univector<float> LPC = {0.2, 0.1, 0.8, 0.1, 0.8};
-
-        // logic
-        univector<float> convRes = convolve(inp, LPC);
-        float diff = ((float) (convRes.size() - inp.size())) / 2;
-        univector<float> e(convRes.begin() + std::floor(diff), convRes.end() - std::ceil(diff));
-
-        // verification
-        bool pass = true;
-        univector<float> expected = {0.16, 0.28, 0.48, 0.68, 0.88, 0.96, 1.04, 0.71};
-        for (int i = 0; i < expected.size(); ++i) {
-            if (std::abs(e[i] - expected[i]) > 0.0001)
-                pass = false;
-            std::cout<< e[i] << "\n";
-        }
-        if (pass)
-            std::cout << "PASSED convolution test\n";
-        else
-            std::cout << "DID NOT PASS convolution test\n";
     }
 
     void convolutionFFT() {
