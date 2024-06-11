@@ -19,11 +19,11 @@ private:
     };
 
     void doLPC(bool firstBuffers);
-    univector<float> autocorrelation(const univector<float>& fromBufer);
+    univector<float> autocorrelation(const univector<float>& fromBufer, bool saveFFT);
     univector<float> levinsonDurbin(const univector<float>& ofBuffer);
     univector<float> getResiduals(const univector<float>& ofBuffer);
     float matchPower(const univector<float>& original, const univector<float>& output);
-    univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients);
+    univector<float> FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients);
 
 //    const int windowSize = 8192;
     const int windowSize = 4096;
@@ -44,4 +44,6 @@ private:
     univector<float> sideChainBuffer2;
     univector<float> filteredBuffer1;
     univector<float> filteredBuffer2;
+
+    univector<std::complex<float>> FFTcache;
 };
