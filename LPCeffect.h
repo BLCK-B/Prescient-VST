@@ -19,10 +19,9 @@ private:
     };
 
     void doLPC(bool firstBuffers);
-    void autocorrelation(const univector<float>& fromBufer);
+    univector<float> autocorrelation(const univector<float>& fromBufer);
     univector<float> levinsonDurbin(const univector<float>& ofBuffer);
     univector<float> getResiduals(const univector<float>& ofBuffer);
-    univector<float> filterFFTsidechain(const univector<float>& LPC, const univector<float>& e);
     float matchPower(const univector<float>& original, const univector<float>& output);
     univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients);
 
@@ -39,8 +38,6 @@ private:
     const int overlapSize = round(windowSize * overlap);
     const int hopSize = windowSize - overlapSize;
 
-    univector<float> corrCoeff;
-    univector<float> residualsBuffer;
     univector<float> carrierBuffer1;
     univector<float> carrierBuffer2;
     univector<float> sideChainBuffer1;

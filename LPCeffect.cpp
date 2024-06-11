@@ -7,21 +7,17 @@ using namespace std::chrono;
 
 // constructor
 LPCeffect::LPCeffect() :
-        corrCoeff(windowSize / 2),
-        residualsBuffer(windowSize),
         carrierBuffer1(windowSize),
         carrierBuffer2(windowSize),
         sideChainBuffer1(windowSize),
         sideChainBuffer2(windowSize),
-        filteredBuffer1(windowSize),
-        filteredBuffer2(windowSize)
+        filteredBuffer1(windowSize, 0.f),
+        filteredBuffer2(windowSize, 0.f)
 {
     jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
-    std::fill(filteredBuffer1.begin(), filteredBuffer1.end(), 0);
-    std::fill(filteredBuffer2.begin(), filteredBuffer2.end(), 0);
 }
 
-// add received sample to buffer, send to processing once buffer full
+// add received samples to buffers, process once buffer full
 float LPCeffect::sendSample(float carrierSample, float voiceSample) {
     carrierBuffer1[index] = carrierSample;
     sideChainBuffer1[index] = voiceSample;
@@ -31,7 +27,6 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
     }
     ++index;
     ++index2;
-
     if (index == windowSize) {
         index = 0;
         doLPC(true);
@@ -40,7 +35,6 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
         index2 = hopSize;
         doLPC(false);
     }
-
     float output = filteredBuffer1[index];
     if (index2 >= hopSize & overlap != 0)
         output += filteredBuffer2[index2 - hopSize];
@@ -49,46 +43,63 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
 }
 
 void LPCeffect::doLPC(bool firstBuffers) {
-    univector<float> LPCvoice = firstBuffers ? levinsonDurbin(sideChainBuffer1) : levinsonDurbin(sideChainBuffer2);
-    univector<float> e = firstBuffers ? getResiduals(carrierBuffer1) : getResiduals(carrierBuffer2);
-
     if (firstBuffers) {
-        filteredBuffer1 = filterFFTsidechain(LPCvoice, e);
+        univector<float> corrCoeff = autocorrelation(sideChainBuffer1);
+        univector<float> LPCvoice = levinsonDurbin(corrCoeff);
+        univector<float> e = getResiduals(carrierBuffer1);
+        filteredBuffer1 = FFToperations(FFToperation::IIR, e, LPCvoice);
         filteredBuffer1 = mul(filteredBuffer1, matchPower(sideChainBuffer1, filteredBuffer1));
     }
     else {
-        filteredBuffer2 = filterFFTsidechain(LPCvoice, e);
+        univector<float> corrCoeff = autocorrelation(sideChainBuffer2);
+        univector<float> LPCvoice = levinsonDurbin(corrCoeff);
+        univector<float> e = getResiduals(carrierBuffer2);
+        filteredBuffer2 = FFToperations(FFToperation::IIR, e, LPCvoice);
         filteredBuffer2 = mul(filteredBuffer2, matchPower(sideChainBuffer2, filteredBuffer2));
     }
 }
 
-float LPCeffect::matchPower(const univector<float>& original, const univector<float>& output) {
-    float sumOfSquares = 0.0;
-    for (const auto& sample : original)
-        sumOfSquares += sample * sample;
-    float signalPower = std::sqrt(sumOfSquares / windowSize);
+univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients) {
+    univector<float> paddedCoeff(windowSize);
+    std::copy(coefficients.begin(), coefficients.end(), paddedCoeff.begin());
 
-    sumOfSquares = 0.0;
-    for (const auto& sample : output)
-        sumOfSquares += sample * sample;
-    float signalPower2 = std::sqrt(sumOfSquares / windowSize);
+    univector<std::complex<float>> fftInp = realdft(inputBuffer);
+    univector<std::complex<float>> fftCoeff = realdft(paddedCoeff);
+    univector<std::complex<float>> fftResult(fftInp.size());
 
-    return signalPower / signalPower2;
+    switch (o) {
+        case FFToperation::Convolution:
+            std::transform(fftInp.begin(), fftInp.end(), fftCoeff.begin(), fftResult.begin(), std::multiplies<>());
+            return irealdft(fftResult);
+        case FFToperation::IIR:
+            std::transform(fftInp.begin(), fftInp.end(), fftCoeff.begin(), fftResult.begin(), std::divides<>());
+            univector<float> filtered = mul(irealdft(fftResult), 0.0001);
+            // faster than filtered *= hannWindow
+            std::transform(filtered.begin(), filtered.end(), hannWindow.begin(), filtered.begin(), std::multiplies<>());
+            return filtered;
+    }
 }
 
-void LPCeffect::autocorrelation(const univector<float>& ofBuffer) {
+univector<float> LPCeffect::getResiduals(const univector<float>& ofBuffer) {
+    univector<float> corrCoeff = autocorrelation(ofBuffer);
+    univector<float> LPC = levinsonDurbin(corrCoeff);
+    univector<float> e = FFToperations(FFToperation::Convolution, ofBuffer, LPC);
+    e = mul(e, 0.1);
+    return e;
+}
+
+univector<float> LPCeffect::autocorrelation(const univector<float>& ofBuffer) {
     // Wiener–Khinchin theorem
     // TODO: better nominal and padding?
     univector<std::complex<float>> fftBuffer = realdft(ofBuffer);
     univector<std::complex<float>> fftBufferConj = cconj(fftBuffer);
     std::transform(fftBuffer.begin(), fftBuffer.end(), fftBufferConj.begin(), fftBuffer.begin(), std::multiplies<>());
-    corrCoeff = irealdft(fftBuffer);
-    corrCoeff /= corrCoeff.size();
+    univector<float> coeffs = irealdft(fftBuffer);
+    coeffs /= coeffs.size();
+    return coeffs;
 }
 
-univector<float> LPCeffect::levinsonDurbin(const univector<float>& ofBuffer) {
-    autocorrelation(ofBuffer);
-
+univector<float> LPCeffect::levinsonDurbin(const univector<float>& corrCoeff) {
     std::vector<float> k(modelOrder + 1);
     std::vector<float> E(modelOrder + 1);
     // matrix of coefficients a[j][i] j = row, i = column
@@ -124,40 +135,18 @@ univector<float> LPCeffect::levinsonDurbin(const univector<float>& ofBuffer) {
     return LPCcoeffs;
 }
 
-univector<float> LPCeffect::getResiduals(const univector<float>& ofBuffer) {
-    univector<float> LPC = levinsonDurbin(ofBuffer);
-    univector<float> e = FFToperations(FFToperation::Convolution, ofBuffer, LPC);
-    e = mul(e, 0.1);
-    return e;
-}
+float LPCeffect::matchPower(const univector<float>& original, const univector<float>& output) {
+    float sumOfSquares = 0.0;
+    for (const auto& sample : original)
+        sumOfSquares += sample * sample;
+    float signalPower = std::sqrt(sumOfSquares / windowSize);
 
-univector<float> LPCeffect::filterFFTsidechain(const univector<float>& LPCvoice, const univector<float>& e) {
-    univector<float> filtered = FFToperations(FFToperation::IIR, e, LPCvoice);
-    filtered = mul(filtered, 0.0001);
-    // faster than filtered *= hannWindow
-    std::transform(filtered.begin(), filtered.end(), hannWindow.begin(), filtered.begin(), std::multiplies<>());
+    sumOfSquares = 0.0;
+    for (const auto& sample : output)
+        sumOfSquares += sample * sample;
+    float signalPower2 = std::sqrt(sumOfSquares / windowSize);
 
-    return filtered;
-}
-
-univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients) {
-    univector<float> paddedCoeff(windowSize);
-    std::copy(coefficients.begin(), coefficients.end(), paddedCoeff.begin());
-
-    univector<std::complex<float>> fftInp = realdft(inputBuffer);
-    univector<std::complex<float>> fftCoeff = realdft(paddedCoeff);
-    univector<std::complex<float>> fftResult(fftInp.size());
-
-    // faster multiplication/division than * or /
-    switch (o) {
-        case FFToperation::Convolution:
-            std::transform(fftInp.begin(), fftInp.end(), fftCoeff.begin(), fftResult.begin(), std::multiplies<>());
-            break;
-        case FFToperation::IIR:
-            std::transform(fftInp.begin(), fftInp.end(), fftCoeff.begin(), fftResult.begin(), std::divides<>());
-            break;
-    }
-    return irealdft(fftResult);
+    return signalPower / signalPower2;
 }
 
 //     white noise
