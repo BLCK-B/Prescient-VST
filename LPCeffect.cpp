@@ -45,16 +45,12 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
 void LPCeffect::doLPC(bool firstBuffers) {
     if (firstBuffers) {
         univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer1, false));
-        univector<float> e = getResiduals(carrierBuffer1);
-        FFTcache.clear();
-        filteredBuffer1 = FFToperations(FFToperation::IIR, e, LPCvoice);
+        filteredBuffer1 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer1), LPCvoice);
         filteredBuffer1 = mul(filteredBuffer1, matchPower(sideChainBuffer1, filteredBuffer1));
     }
     else {
         univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer2, false));
-        univector<float> e = getResiduals(carrierBuffer2);
-        FFTcache.clear();
-        filteredBuffer2 = FFToperations(FFToperation::IIR, e, LPCvoice);
+        filteredBuffer2 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer2), LPCvoice);
         filteredBuffer2 = mul(filteredBuffer2, matchPower(sideChainBuffer2, filteredBuffer2));
     }
 }
@@ -97,7 +93,6 @@ univector<float> LPCeffect::autocorrelation(const univector<float>& ofBuffer, bo
     univector<std::complex<float>> fftBufferConj = cconj(fftBuffer);
     std::transform(fftBuffer.begin(), fftBuffer.end(), fftBufferConj.begin(), fftBuffer.begin(), std::multiplies<>());
     univector<float> coeffs = irealdft(fftBuffer);
-    coeffs /= coeffs.size();
     return coeffs;
 }
 
