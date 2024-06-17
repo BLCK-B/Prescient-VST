@@ -62,7 +62,7 @@ univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>
     std::copy(coefficients.begin(), coefficients.end(), paddedCoeff.begin());
 
     univector<std::complex<float>> fftInp = o == FFToperation::Convolution ? FFTcache : realdft(inputBuffer);
-    univector<std::complex<float>> fftCoeff = realdft(paddedCoeff);
+    univector<std::complex<float>> fftCoeff = realdft(coefficients);
 
     switch (o) {
         case FFToperation::Convolution:
@@ -80,7 +80,6 @@ univector<float> LPCeffect::getResiduals(const univector<float>& ofBuffer) {
     univector<float> corrCoeff = autocorrelation(ofBuffer, true);
     univector<float> LPC = levinsonDurbin(corrCoeff);
     univector<float> e = FFToperations(FFToperation::Convolution, ofBuffer, LPC);
-    e = mul(e, 0.1);
     return e;
 }
 
@@ -125,22 +124,18 @@ univector<float> LPCeffect::levinsonDurbin(const univector<float>& corrCoeff) co
         kTo2 = std::pow(k[i-1],2);
         E[i-1] = static_cast<float>((1 - kTo2) * E[i - 2]);
     }
-    univector<float> LPCcoeffs(modelOrder);
+    univector<float> LPCcoeffs(windowSize, 0.f);
     for (int x = 0; x <= modelOrder; ++x)
-        LPCcoeffs.push_back(a[modelOrder][modelOrder - x]);
+        LPCcoeffs[x] = (a[modelOrder][modelOrder - x]);
 
     return LPCcoeffs;
 }
 
 float LPCeffect::matchPower(const univector<float>& original, const univector<float>& output) const {
-    float sumOfSquares = 0.0;
-    for (const auto& sample : original)
-        sumOfSquares += sample * sample;
+    float sumOfSquares = std::inner_product(original.begin(), original.end(), original.begin(), 0.0f);
     float signalPower = std::sqrt(sumOfSquares / static_cast<float>(windowSize));
 
-    sumOfSquares = 0.0;
-    for (const auto& sample : output)
-        sumOfSquares += sample * sample;
+    sumOfSquares = std::inner_product(output.begin(), output.end(), output.begin(), 0.0f);
     float signalPower2 = std::sqrt(sumOfSquares / static_cast<float>(windowSize));
 
     return signalPower / signalPower2;
