@@ -20,10 +20,13 @@ private:
 
     void doLPC(bool firstBuffers);
     univector<float> autocorrelation(const univector<float>& fromBufer, bool saveFFT);
-    univector<float> levinsonDurbin(const univector<float>& ofBuffer);
+    [[nodiscard]] univector<float> levinsonDurbin(const univector<float>& ofBuffer) const;
     univector<float> getResiduals(const univector<float>& ofBuffer);
-    float matchPower(const univector<float>& original, const univector<float>& output);
+    [[nodiscard]] float matchPower(const univector<float>& original, const univector<float>& output) const;
     univector<float> FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients);
+    static void mulVectorWith(univector<float>& vec1, const univector<float>& vec2);
+    static void mulVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2);
+    static void divVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2);
 
 //    const int windowSize = 8192;
     const int windowSize = 4096;

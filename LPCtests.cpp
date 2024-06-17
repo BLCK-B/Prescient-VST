@@ -45,14 +45,22 @@ class LPCtests {
 
             kTo2 = std::pow(k[i-1],2);
             E[i-1] = (1 - kTo2) * E[i - 2];
+
+            std::cout<<"LPC coeffs\n";
+            for (int col = 0; col <= modelOrder; ++col) {
+                for (int row = 0; row <= modelOrder; ++row) {
+                    std::cout << std::setprecision(5) << a[row][col] << " ";
+                }
+                std::cout << "\n";
+            } std::cout << "\n\n";
         }
-    //    std::cout<<"LPC coeffs\n";
-    //    for (int col = 0; col <= modelOrder; ++col) {
-    //        for (int row = 0; row <= modelOrder; ++row) {
-    //            std::cout << setprecision(5) << a[row][col] << " ";
-    //        }
-    //        std::cout << "\n";
-    //    } std::cout << "\n\n";
+//        std::cout<<"LPC coeffs\n";
+//        for (int col = 0; col <= modelOrder; ++col) {
+//            for (int row = 0; row <= modelOrder; ++row) {
+//                std::cout << std::setprecision(5) << a[row][col] << " ";
+//            }
+//            std::cout << "\n";
+//        } std::cout << "\n\n";
         for (int x = 0; x <= modelOrder; ++x) {
             LPCcoeffs.push_back(a[modelOrder][modelOrder - x]);
         }
