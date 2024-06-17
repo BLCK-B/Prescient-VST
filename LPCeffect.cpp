@@ -62,7 +62,7 @@ univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>
     std::copy(coefficients.begin(), coefficients.end(), paddedCoeff.begin());
 
     univector<std::complex<float>> fftInp = o == FFToperation::Convolution ? FFTcache : realdft(inputBuffer);
-    univector<std::complex<float>> fftCoeff = realdft(coefficients);
+    univector<std::complex<float>> fftCoeff = realdft(paddedCoeff);
 
     switch (o) {
         case FFToperation::Convolution:
@@ -124,9 +124,9 @@ univector<float> LPCeffect::levinsonDurbin(const univector<float>& corrCoeff) co
         kTo2 = std::pow(k[i-1],2);
         E[i-1] = static_cast<float>((1 - kTo2) * E[i - 2]);
     }
-    univector<float> LPCcoeffs(windowSize, 0.f);
+    univector<float> LPCcoeffs(modelOrder);
     for (int x = 0; x <= modelOrder; ++x)
-        LPCcoeffs[x] = (a[modelOrder][modelOrder - x]);
+        LPCcoeffs.push_back(a[modelOrder][modelOrder - x]);
 
     return LPCcoeffs;
 }
