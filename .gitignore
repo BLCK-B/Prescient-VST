@@ -39,3 +39,4 @@ cmake-build-debug-visual-studio/
 SideTesting/
 kfr/
 /kfr/
+/cmake-build-debug-visual-studio-coverage
