@@ -48,5 +48,7 @@ private:
     univector<float> filteredBuffer1;
     univector<float> filteredBuffer2;
 
+    std::mutex lock;
+
     univector<std::complex<float>> FFTcache;
 };

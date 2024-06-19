@@ -29,11 +29,15 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
     ++index2;
     if (index == windowSize) {
         index = 0;
-        doLPC(true);
+        std::thread t(&LPCeffect::doLPC, this, true);
+        t.detach();
+//        doLPC(true);
     }
     else if (index2 == hopSize + windowSize && overlap != 0) {
         index2 = hopSize;
-        doLPC(false);
+        std::thread t(&LPCeffect::doLPC, this, false);
+        t.detach();
+//        doLPC(false);
     }
     float output = filteredBuffer1[index];
     if (index2 >= hopSize & overlap != 0)
@@ -45,15 +49,19 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
 void LPCeffect::doLPC(bool firstBuffers) {
     if (firstBuffers) {
         univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer1, false));
-        filteredBuffer1 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer1), LPCvoice);
-//        filteredBuffer1 = getResiduals(carrierBuffer1);
-        filteredBuffer1 = mul(filteredBuffer1, matchPower(sideChainBuffer1, filteredBuffer1));
+        univector<float> placeHolder = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer1), LPCvoice);
+        placeHolder = mul(placeHolder, matchPower(sideChainBuffer1, placeHolder));
+        lock.lock();
+        std::memcpy(filteredBuffer1.data(), placeHolder.data(), placeHolder.size() * sizeof(float));
+        lock.unlock();
     }
     else {
         univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer2, false));
-        filteredBuffer2 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer2), LPCvoice);
-//        filteredBuffer2 = getResiduals(carrierBuffer2);
-        filteredBuffer2 = mul(filteredBuffer2, matchPower(sideChainBuffer2, filteredBuffer2));
+        univector<float> placeHolder = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer2), LPCvoice);
+        placeHolder = mul(placeHolder, matchPower(sideChainBuffer2, placeHolder));
+        lock.lock();
+        std::memcpy(filteredBuffer2.data(), placeHolder.data(), placeHolder.size() * sizeof(float));
+        lock.unlock();
     }
 }
 
@@ -85,7 +93,6 @@ univector<float> LPCeffect::getResiduals(const univector<float>& ofBuffer) {
 
 univector<float> LPCeffect::autocorrelation(const univector<float>& ofBuffer, bool saveFFT) {
     // Wiener–Khinchin theorem
-    // TODO: better nominal and padding/window?
     univector<std::complex<float>> fftBuffer = realdft(ofBuffer);
     if (saveFFT)
         FFTcache = fftBuffer;
@@ -158,3 +165,7 @@ void LPCeffect::divVectorWith(univector<std::complex<float>>& vec1, const univec
 //        rnd /= 100000000 * 0.5;
 //        newE[n] = rnd;
 //    }
+
+//auto start_time = std::chrono::high_resolution_clock::now();
+//auto end = std::chrono::high_resolution_clock::now();
+//std::cout << "Time difference: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start_time).count() << " nanoseconds" << std::endl;
