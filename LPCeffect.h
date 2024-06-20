@@ -11,7 +11,7 @@ using namespace kfr;
 class LPCeffect {
 public:
     LPCeffect();
-    int getLatency() const;
+    [[nodiscard]] int getLatency() const;
     float sendSample(float sample, float sidechain);
 
 private:
@@ -48,6 +48,12 @@ private:
     univector<float> sideChainBuffer2;
     univector<float> filteredBuffer1;
     univector<float> filteredBuffer2;
+    univector<float> tempBuffer1;
+    univector<float> tempBuffer2;
+
+    bool tempFill1 = false;
+    bool tempFill2 = false;
+
 
     std::mutex lock;
 

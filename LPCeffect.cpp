@@ -12,7 +12,9 @@ LPCeffect::LPCeffect() :
         sideChainBuffer1(windowSize),
         sideChainBuffer2(windowSize),
         filteredBuffer1(windowSize, 0.f),
-        filteredBuffer2(windowSize, 0.f)
+        filteredBuffer2(windowSize, 0.f),
+        tempBuffer1(windowSize, 0.f),
+        tempBuffer2(windowSize, 0.f)
 {
     jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
 }
@@ -52,20 +54,26 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
 
 void LPCeffect::doLPC(bool firstBuffers) {
     if (firstBuffers) {
+        if (tempFill1) {
+            lock.lock();
+            std::memcpy(filteredBuffer1.data(), tempBuffer1.data(), tempBuffer1.size() * sizeof(float));
+            lock.unlock();
+        }
         univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer1, false));
-        univector<float> placeHolder = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer1), LPCvoice);
-        placeHolder = mul(placeHolder, matchPower(sideChainBuffer1, placeHolder));
-        lock.lock();
-        std::memcpy(filteredBuffer1.data(), placeHolder.data(), placeHolder.size() * sizeof(float));
-        lock.unlock();
+        tempBuffer1 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer1), LPCvoice);
+        tempBuffer1 = mul(tempBuffer1, matchPower(sideChainBuffer1, tempBuffer1));
+        tempFill1 = true;
     }
     else {
+        if (tempFill2) {
+            lock.lock();
+            std::memcpy(filteredBuffer2.data(), tempBuffer2.data(), tempBuffer2.size() * sizeof(float));
+            lock.unlock();
+        }
         univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer2, false));
-        univector<float> placeHolder = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer2), LPCvoice);
-        placeHolder = mul(placeHolder, matchPower(sideChainBuffer2, placeHolder));
-        lock.lock();
-        std::memcpy(filteredBuffer2.data(), placeHolder.data(), placeHolder.size() * sizeof(float));
-        lock.unlock();
+        tempBuffer2 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer2), LPCvoice);
+        tempBuffer2 = mul(tempBuffer2, matchPower(sideChainBuffer2, tempBuffer2));
+        tempFill2 = true;
     }
 }
 
