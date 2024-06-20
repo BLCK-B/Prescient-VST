@@ -134,7 +134,7 @@ void MyAudioProcessor::changeProgramName (int index, const juce::String& newName
 //on init
 void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    setLatencySamples(4096);
+    setLatencySamples(lpcEffect[0].getLatency());
     juce::ignoreUnused (sampleRate, samplesPerBlock);
     juce::dsp::ProcessSpec spec{};
     spec.maximumBlockSize = samplesPerBlock;
@@ -193,8 +193,6 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         float sampleSideChainR = sideChain.getReadPointer(1)[sample];
 //        float sampleSideChainL = 0;
 //        float sampleSideChainR = 0;
-        if (abs(sampleL) < 0.000000001 || abs(sampleR) < 0.000000001)
-            continue;
 
         // flanger
         //channelL[sample] = flangerEffect(sampleL);
