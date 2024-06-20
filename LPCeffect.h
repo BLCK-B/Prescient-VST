@@ -34,7 +34,7 @@ private:
 //    const int windowSize = 2048;
     univector<fbase, 4096> hannWindow = window_hann(4096);
 
-    const int modelOrder = 100;
+    const int modelOrder = 85;
     int index = 0;
     int index2 = 0;
 
@@ -53,9 +53,6 @@ private:
 
     bool tempFill1 = false;
     bool tempFill2 = false;
-
-
-    std::mutex lock;
 
     univector<std::complex<float>> FFTcache;
 };

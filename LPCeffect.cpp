@@ -35,15 +35,11 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
     ++index2;
     if (index == windowSize) {
         index = 0;
-        std::thread t(&LPCeffect::doLPC, this, true);
-        t.detach();
-//        doLPC(true);
+        doLPC(true);
     }
     else if (index2 == hopSize + windowSize && overlap != 0) {
         index2 = hopSize;
-        std::thread t(&LPCeffect::doLPC, this, false);
-        t.detach();
-//        doLPC(false);
+        doLPC(false);
     }
     float output = filteredBuffer1[index];
     if (index2 >= hopSize & overlap != 0)
@@ -55,9 +51,8 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
 void LPCeffect::doLPC(bool firstBuffers) {
     if (firstBuffers) {
         if (tempFill1) {
-            lock.lock();
+//            tempBuffer1 += sideChainBuffer1;
             std::memcpy(filteredBuffer1.data(), tempBuffer1.data(), tempBuffer1.size() * sizeof(float));
-            lock.unlock();
         }
         univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer1, false));
         tempBuffer1 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer1), LPCvoice);
@@ -66,9 +61,8 @@ void LPCeffect::doLPC(bool firstBuffers) {
     }
     else {
         if (tempFill2) {
-            lock.lock();
+//            tempBuffer2 += sideChainBuffer2;
             std::memcpy(filteredBuffer2.data(), tempBuffer2.data(), tempBuffer2.size() * sizeof(float));
-            lock.unlock();
         }
         univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer2, false));
         tempBuffer2 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer2), LPCvoice);
@@ -157,7 +151,10 @@ float LPCeffect::matchPower(const univector<float>& original, const univector<fl
     sumOfSquares = std::inner_product(output.begin(), output.end(), output.begin(), 0.0f);
     float signalPower2 = std::sqrt(sumOfSquares / static_cast<float>(windowSize));
 
-    return signalPower / signalPower2;
+    if (signalPower < signalPower2)
+        return signalPower / signalPower2;
+    else
+        return signalPower2 / signalPower;
 }
 
 void LPCeffect::mulVectorWith(univector<float>& vec1, const univector<float>& vec2) {
