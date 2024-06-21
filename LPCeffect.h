@@ -12,7 +12,7 @@ class LPCeffect {
 public:
     LPCeffect();
     [[nodiscard]] int getLatency() const;
-    float sendSample(float sample, float sidechain, bool stutter, float passthrough);
+    float sendSample(float sample, float sidechain, int modelorder, bool stutter, float passthrough);
 
 private:
     enum class FFToperation {
@@ -34,13 +34,14 @@ private:
     const int windowSize = 2048;
     univector<fbase, 2048> hannWindow = window_hann(2048);
 
-    const int modelOrder = 70;
     int index = 0;
     int index2 = 0;
 
     const float overlap = 0.5;
     const int overlapSize = round(windowSize * overlap);
     const int hopSize = windowSize - overlapSize;
+
+    int tempmodelorder = 70;
 
     univector<float> carrierBuffer1;
     univector<float> carrierBuffer2;

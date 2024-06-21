@@ -15,6 +15,7 @@ MyAudioProcessor::MyAudioProcessor()
     treeState.addParameterListener("flanger invert", this);
     treeState.addParameterListener("flanger depth", this);
     treeState.addParameterListener("flanger base", this);
+    treeState.addParameterListener("model order", this);
     treeState.addParameterListener("passthrough", this);
     treeState.addParameterListener("stutter", this);
 }
@@ -30,6 +31,7 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.flangerInvert = treeState.getRawParameterValue("flanger invert")->load();
     settings.flangerDepth = treeState.getRawParameterValue("flanger depth")->load();
     settings.flangerBase = treeState.getRawParameterValue("flanger base")->load();
+    settings.modelorder = treeState.getRawParameterValue("model order")->load();
     settings.passthrough = treeState.getRawParameterValue("passthrough")->load();
     settings.stutter = treeState.getRawParameterValue("stutter")->load();
 
@@ -56,8 +58,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
     layout.add(std::make_unique<juce::AudioParameterFloat>("flanger base", "Flanger Base",
             juce::NormalisableRange<float>(0.f, 25.f, 0.1f, 1.f), 0.f));
 
+    layout.add(std::make_unique<juce::AudioParameterFloat>("model order", "model order",
+           juce::NormalisableRange<float>(5.f, 180.f, 5.f, 1.f), 70.f));
+
     layout.add(std::make_unique<juce::AudioParameterFloat>("passthrough", "passthrough",
-            juce::NormalisableRange<float>(0.f, 0.5f, 0.1f, 1.f), 0.f));
+           juce::NormalisableRange<float>(0.f, 0.5f, 0.1f, 1.f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterBool>("stutter", "stutter", false));
 
@@ -138,6 +143,7 @@ void MyAudioProcessor::changeProgramName (int index, const juce::String& newName
 //on init
 void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    chainSettings.modelorder = 70;
     setLatencySamples(lpcEffect[0].getLatency());
     juce::ignoreUnused (sampleRate, samplesPerBlock);
     juce::dsp::ProcessSpec spec{};
@@ -198,19 +204,19 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 //        float sampleSideChainL = 0;
 //        float sampleSideChainR = 0;
 
-        // flanger
-        channelL[sample] = flangerEffect(sampleL);
-        channelR[sample] = flangerEffect(sampleR);
-
         // LPC
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
 //        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 //        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
-        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, chainSettings.stutter, chainSettings.passthrough);
-        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, chainSettings.stutter, chainSettings.passthrough);
+        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, (int) chainSettings.modelorder, chainSettings.stutter, chainSettings.passthrough);
+        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, (int) chainSettings.modelorder, chainSettings.stutter, chainSettings.passthrough);
 
 //        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
+
+        // flanger
+//        sampleL = flangerEffect(sampleL);
+//        sampleR = flangerEffect(sampleR);
 
         channelL[sample] = sampleL;
         channelR[sample] = sampleR;
@@ -226,9 +232,7 @@ float MyAudioProcessor::flangerEffect(float currentSample) {
 
     float currentDelay = base + depth * lfoOutput;
 
-    // push sample onto delay line
     flangerDelayLine.pushSample(0, currentSample);
-    // retrieving a sample from delayline with delay
     float currentDelayInSamples = currentDelay * getSampleRate() / 1000.f;
     float delayedSample = flangerDelayLine.popSample(0, currentDelayInSamples, true) * (1.f - ratio);
 

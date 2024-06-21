@@ -24,7 +24,7 @@ int LPCeffect::getLatency() const {
 }
 
 // add received samples to buffers, process once buffer full
-float LPCeffect::sendSample(float carrierSample, float voiceSample, bool stutter, float passthrough) {
+float LPCeffect::sendSample(float carrierSample, float voiceSample, int modelorder, bool stutter, float passthrough) {
     carrierBuffer1[index] = carrierSample;
     sideChainBuffer1[index] = voiceSample;
     if (index2 >= hopSize & overlap != 0) {
@@ -37,10 +37,11 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, bool stutter
         index = 0;
         if (!stutter)
             doLPC(true, passthrough);
+        tempmodelorder = modelorder;
     }
     else if (index2 == hopSize + windowSize && overlap != 0) {
         index2 = hopSize;
-        if (!stutter)
+//        if (!stutter)
             doLPC(false, passthrough);
     }
     float output = filteredBuffer1[index];
@@ -111,12 +112,12 @@ univector<float> LPCeffect::autocorrelation(const univector<float>& ofBuffer, bo
 }
 
 univector<float> LPCeffect::levinsonDurbin(const univector<float>& corrCoeff) const {
-    std::vector<float> k(modelOrder + 1);
-    std::vector<float> E(modelOrder + 1);
+    std::vector<float> k(tempmodelorder + 1);
+    std::vector<float> E(tempmodelorder + 1);
     // matrix of coefficients a[j][i] j = row, i = column
-    std::vector<std::vector<float>> a(modelOrder + 1, std::vector<float>(modelOrder + 1, 0.0f));
+    std::vector<std::vector<float>> a(tempmodelorder + 1, std::vector<float>(tempmodelorder + 1, 0.0f));
     // init
-    for (int r = 0; r <= modelOrder; ++r)
+    for (int r = 0; r <= tempmodelorder; ++r)
         a[r][r] = 1;
 
     k[0] = - corrCoeff[1] / corrCoeff[0];
@@ -124,7 +125,7 @@ univector<float> LPCeffect::levinsonDurbin(const univector<float>& corrCoeff) co
     auto kTo2 = std::pow(k[0], 2);
     E[0] = static_cast<float>((1 - kTo2) * corrCoeff[0]);
 
-    for (int i = 2; i <= modelOrder; ++i) {
+    for (int i = 2; i <= tempmodelorder; ++i) {
         float sum = 0.f;
         for (int j = 0; j <= i; ++j) {
             sum += a[i-1][j] * corrCoeff[j + 1];
@@ -139,9 +140,9 @@ univector<float> LPCeffect::levinsonDurbin(const univector<float>& corrCoeff) co
         kTo2 = std::pow(k[i-1],2);
         E[i-1] = static_cast<float>((1 - kTo2) * E[i - 2]);
     }
-    univector<float> LPCcoeffs(modelOrder);
-    for (int x = 0; x <= modelOrder; ++x)
-        LPCcoeffs.push_back(a[modelOrder][modelOrder - x]);
+    univector<float> LPCcoeffs(tempmodelorder);
+    for (int x = 0; x <= tempmodelorder; ++x)
+        LPCcoeffs.push_back(a[tempmodelorder][tempmodelorder - x]);
 
     return LPCcoeffs;
 }
