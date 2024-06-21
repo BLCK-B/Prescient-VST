@@ -15,7 +15,8 @@ MyAudioProcessor::MyAudioProcessor()
     treeState.addParameterListener("flanger invert", this);
     treeState.addParameterListener("flanger depth", this);
     treeState.addParameterListener("flanger base", this);
-    treeState.addParameterListener("pitch shift", this);
+    treeState.addParameterListener("passthrough", this);
+    treeState.addParameterListener("stutter", this);
 }
 
 MyAudioProcessor::~MyAudioProcessor()
@@ -29,7 +30,8 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.flangerInvert = treeState.getRawParameterValue("flanger invert")->load();
     settings.flangerDepth = treeState.getRawParameterValue("flanger depth")->load();
     settings.flangerBase = treeState.getRawParameterValue("flanger base")->load();
-    settings.pitchShift = treeState.getRawParameterValue("pitch shift")->load();
+    settings.passthrough = treeState.getRawParameterValue("passthrough")->load();
+    settings.stutter = treeState.getRawParameterValue("stutter")->load();
 
     return settings;
 }
@@ -54,8 +56,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
     layout.add(std::make_unique<juce::AudioParameterFloat>("flanger base", "Flanger Base",
             juce::NormalisableRange<float>(0.f, 25.f, 0.1f, 1.f), 0.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("pitch shift", "Pitch Shift",
-            juce::NormalisableRange<float>(0.1f, 4.f, 0.01f, 0.5f), 1.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("passthrough", "passthrough",
+            juce::NormalisableRange<float>(0.f, 0.5f, 0.1f, 1.f), 0.f));
+
+    layout.add(std::make_unique<juce::AudioParameterBool>("stutter", "stutter", false));
 
     return layout;
 }
@@ -195,16 +199,16 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 //        float sampleSideChainR = 0;
 
         // flanger
-        //channelL[sample] = flangerEffect(sampleL);
-        //channelR[sample] = flangerEffect(sampleR);
+        channelL[sample] = flangerEffect(sampleL);
+        channelR[sample] = flangerEffect(sampleR);
 
         // LPC
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
 //        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 //        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
-        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL);
-        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR);
+        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, chainSettings.stutter, chainSettings.passthrough);
+        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, chainSettings.stutter, chainSettings.passthrough);
 
 //        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
 

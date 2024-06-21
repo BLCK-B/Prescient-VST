@@ -24,7 +24,7 @@ int LPCeffect::getLatency() const {
 }
 
 // add received samples to buffers, process once buffer full
-float LPCeffect::sendSample(float carrierSample, float voiceSample) {
+float LPCeffect::sendSample(float carrierSample, float voiceSample, bool stutter, float passthrough) {
     carrierBuffer1[index] = carrierSample;
     sideChainBuffer1[index] = voiceSample;
     if (index2 >= hopSize & overlap != 0) {
@@ -35,11 +35,13 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
     ++index2;
     if (index == windowSize) {
         index = 0;
-        doLPC(true);
+        if (!stutter)
+            doLPC(true, passthrough);
     }
     else if (index2 == hopSize + windowSize && overlap != 0) {
         index2 = hopSize;
-        doLPC(false);
+        if (!stutter)
+            doLPC(false, passthrough);
     }
     float output = filteredBuffer1[index];
     if (index2 >= hopSize & overlap != 0)
@@ -48,10 +50,10 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample) {
     return output;
 }
 
-void LPCeffect::doLPC(bool firstBuffers) {
+void LPCeffect::doLPC(bool firstBuffers, float passthrough) {
     if (firstBuffers) {
         if (tempFill1) {
-//            tempBuffer1 += sideChainBuffer1;
+            tempBuffer1 += mul(sideChainBuffer1, passthrough);
             std::memcpy(filteredBuffer1.data(), tempBuffer1.data(), tempBuffer1.size() * sizeof(float));
         }
         univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer1, false));
@@ -61,7 +63,7 @@ void LPCeffect::doLPC(bool firstBuffers) {
     }
     else {
         if (tempFill2) {
-//            tempBuffer2 += sideChainBuffer2;
+            tempBuffer2 += mul(sideChainBuffer2, passthrough);
             std::memcpy(filteredBuffer2.data(), tempBuffer2.data(), tempBuffer2.size() * sizeof(float));
         }
         univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer2, false));

@@ -12,14 +12,14 @@ class LPCeffect {
 public:
     LPCeffect();
     [[nodiscard]] int getLatency() const;
-    float sendSample(float sample, float sidechain);
+    float sendSample(float sample, float sidechain, bool stutter, float passthrough);
 
 private:
     enum class FFToperation {
         Convolution, IIR
     };
 
-    void doLPC(bool firstBuffers);
+    void doLPC(bool firstBuffers, float passthrough);
     univector<float> autocorrelation(const univector<float>& fromBufer, bool saveFFT);
     [[nodiscard]] univector<float> levinsonDurbin(const univector<float>& ofBuffer) const;
     univector<float> getResiduals(const univector<float>& ofBuffer);
@@ -30,11 +30,11 @@ private:
     static void divVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2);
 
 //    const int windowSize = 8192;
-    const int windowSize = 4096;
-//    const int windowSize = 2048;
-    univector<fbase, 4096> hannWindow = window_hann(4096);
+//    const int windowSize = 4096;
+    const int windowSize = 2048;
+    univector<fbase, 2048> hannWindow = window_hann(2048);
 
-    const int modelOrder = 85;
+    const int modelOrder = 70;
     int index = 0;
     int index2 = 0;
 
