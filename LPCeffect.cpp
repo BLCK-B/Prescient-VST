@@ -19,10 +19,6 @@ LPCeffect::LPCeffect() :
     jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
 }
 
-int LPCeffect::getLatency() const {
-    return windowSize;
-}
-
 // add received samples to buffers, process once buffer full
 float LPCeffect::sendSample(float carrierSample, float voiceSample, int modelorder, bool stutter, float passthrough) {
     carrierBuffer1[index] = carrierSample;
@@ -41,7 +37,7 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, int modelord
     }
     else if (index2 == hopSize + windowSize && overlap != 0) {
         index2 = hopSize;
-//        if (!stutter)
+        if (!stutter)
             doLPC(false, passthrough);
     }
     float output = filteredBuffer1[index];

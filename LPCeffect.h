@@ -11,7 +11,9 @@ using namespace kfr;
 class LPCeffect {
 public:
     LPCeffect();
-    [[nodiscard]] int getLatency() const;
+    [[nodiscard]] int getLatency() const {
+        return windowSize;
+    }
     float sendSample(float sample, float sidechain, int modelorder, bool stutter, float passthrough);
 
 private:
@@ -32,6 +34,7 @@ private:
 //    const int windowSize = 8192;
 //    const int windowSize = 4096;
     const int windowSize = 2048;
+//    const int windowSize = 1024;
     univector<fbase, 2048> hannWindow = window_hann(2048);
 
     int index = 0;
