@@ -2,6 +2,7 @@
 #include <kfr/base.hpp>
 #include <kfr/dft.hpp>
 #include <kfr/dsp.hpp>
+#include "ShiftEffect.cpp"
 
 #ifndef AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
 #define AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
