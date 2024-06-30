@@ -161,6 +161,7 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 //    lpCtests.levinsonDurbinTest();
 //    lpCtests.IIRfilterTest();
 //    lpCtests.convolutionFFT();
+//    lpCtests.shiftSignal();
 }
 
 void MyAudioProcessor::releaseResources()
@@ -199,10 +200,10 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
-        float sampleSideChainL = sideChain.getReadPointer(0)[sample];
-        float sampleSideChainR = sideChain.getReadPointer(1)[sample];
-//        float sampleSideChainL = 0;
-//        float sampleSideChainR = 0;
+//        float sampleSideChainL = sideChain.getReadPointer(0)[sample];
+//        float sampleSideChainR = sideChain.getReadPointer(1)[sample];
+        float sampleSideChainL = 0;
+        float sampleSideChainR = 0;
 
         // LPC
 //        sampleL = sampleR = rand() % 1000 / 1000.0;

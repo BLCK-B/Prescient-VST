@@ -2,8 +2,8 @@
 
 ShiftEffect::ShiftEffect() {
 }
-
-univector<float> ShiftEffect::shiftSignal(univector<float> input) {
+// TODO: KFR ACCEPTS ONLY % 2 - move possible to header
+univector<float> ShiftEffect::shiftSignal(const univector<float>& input) {
     int analysisHop = 200;
     int synthesisHop = 150;
 
@@ -13,12 +13,9 @@ univector<float> ShiftEffect::shiftSignal(univector<float> input) {
     for (int i = 0; i < LEN; ++i)
         ramp[i] = std::floor((i * analysisHop) / synthesisHop) + 1;
     int resampledLEN = std::floor(LEN * analysisHop / synthesisHop);
-    univector<int> x;
+        univector<float> x(resampledLEN, 0.f);
     for (int i = 0; i < resampledLEN; ++i)
-        x.push_back(1 + i * LEN / resampledLEN);
-
-    input /= absmaxof(input);
-
+            x[i] = (1 + (float) i * LEN / resampledLEN);
     univector<float> output(input.size() + resampledLEN, 0.f);
     univector<float> omega;
     for (int i = 0; i < LEN; ++i)
@@ -32,24 +29,51 @@ univector<float> ShiftEffect::shiftSignal(univector<float> input) {
         grain *= hannWindow;
         univector<std::complex<float>> fftGrain = realdft(grain);
         // phase information: output psi
-        univector<float> phi = carg(fftGrain);
-        univector<float> delta = (phi - previousPhi - omega + pi) % (-2 * pi) + omega + pi;
-        psi = (psi + delta * synthesisHop / analysisHop + pi) % (-2 * pi) + pi;
+        univector<float> phi = -carg(fftGrain);
+        univector<float> delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
+        psi = modulo(psi + delta * synthesisHop / analysisHop + pi, -2 * pi) + pi;
         previousPhi = phi;
         // shifting: output correction factor
         univector<float> temp;
-        for (int i : ramp)
-            temp.push_back(i + anCycle + 1);
+            for (int r : ramp)
+                temp.push_back(input[anCycle + r - 1] / (LEN * 0.5));
         temp *= hannWindow;
-        temp /= (LEN * 0.5);
-        univector<std::complex<float>> f1 = std::abs(realdft(temp));
-        univector<std::complex<float>> logarithmic = std::log(0.00001 + f1) - std::log(0.00001 + std::abs(fftGrain)) / 2;
-        univector<float> realLog = irealdft(logarithmic);
-        univector<std::complex<float>> corrected = std::abs(fftGrain) * std::exp(realLog[0]) * std::exp(1j * psi);
+        univector<float> f1 = absOf(realdft(temp));
+        univector<std::complex<float>> diff = f1 - fftGrain;
+        univector<float> realDiff = irealdft(diff) / 2;
+        univector<std::complex<float>> corrected = absOf(fftGrain) * std::exp(realDiff[0]) * expComplex(makeComplex(psi));
         // interpolation
-        grain = real(irealdft(corrected) * hannWindow);
-        output(...) += grain(...);
+        grain = real(irealdft(corrected)) / 2;
+        grain *= hannWindow;
+        for (int i = anCycle; i < anCycle + resampledLEN; ++i)
+                output[i] += grain[std::floor(x[i - anCycle]) - 1];
     }
-    return output(...);
+    univector<float> result(input.size());
+    std::copy(output.begin(), output.begin() + input.size(), result.begin());
+    return result;
 }
 
+univector<float> ShiftEffect::absOf(const univector<std::complex<float>>& ofBuffer) {
+    univector<float> result;
+    for (auto& x : ofBuffer)
+        result.push_back(abs(x));
+    return result;
+}
+
+univector<std::complex<float>> ShiftEffect::makeComplex(const univector<float>& ofBuffer) {
+    univector<std::complex<float>> result;
+    for (auto& x : ofBuffer)
+        result.push_back(make_complex(0.f, x));
+    return result;
+}
+
+univector<std::complex<float>> ShiftEffect::expComplex(const univector<std::complex<float>>& ofBuffer) {
+    univector<std::complex<float>> result;
+    for (auto& x : ofBuffer)
+        result.push_back(std::exp(x));
+    return result;
+}
+
+univector<float> ShiftEffect::modulo(const univector<float>& a, float b) {
+    return a - floor(a / b) * b;
+}

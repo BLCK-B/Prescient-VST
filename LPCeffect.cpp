@@ -33,12 +33,14 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, int modelord
         index = 0;
         if (!stutter)
             doLPC(true, passthrough);
+        doShift(true,filteredBuffer1);
         tempmodelorder = modelorder;
     }
     else if (index2 == hopSize + windowSize && overlap != 0) {
         index2 = hopSize;
         if (!stutter)
             doLPC(false, passthrough);
+        doShift(false,filteredBuffer2);
     }
     float output = filteredBuffer1[index];
     if (index2 >= hopSize & overlap != 0)
@@ -68,6 +70,15 @@ void LPCeffect::doLPC(bool firstBuffers, float passthrough) {
         tempBuffer2 = mul(tempBuffer2, matchPower(sideChainBuffer2, tempBuffer2));
         tempFill2 = true;
     }
+}
+
+void LPCeffect::doShift(bool firstBuffers, const univector<float>& input) {
+    univector<float> shifted = shiftEffect.shiftSignal(input);
+    std::cout<<shifted.size()<<", "<<input.size()<<"\n";
+    if (firstBuffers)
+        std::memcpy(filteredBuffer1.data(), shifted.data(), shifted.size() * sizeof(float));
+    else
+        std::memcpy(filteredBuffer2.data(), shifted.data(), shifted.size() * sizeof(float));
 }
 
 univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients) {

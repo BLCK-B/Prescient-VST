@@ -23,6 +23,7 @@ private:
     };
 
     void doLPC(bool firstBuffers, float passthrough);
+    void doShift(bool firstBuffers, const univector<float>& input);
     univector<float> autocorrelation(const univector<float>& fromBufer, bool saveFFT);
     [[nodiscard]] univector<float> levinsonDurbin(const univector<float>& ofBuffer) const;
     univector<float> getResiduals(const univector<float>& ofBuffer);
@@ -60,4 +61,6 @@ private:
     bool tempFill2 = false;
 
     univector<std::complex<float>> FFTcache;
+
+    ShiftEffect shiftEffect;
 };
