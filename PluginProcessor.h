@@ -5,7 +5,7 @@
 #include "LPCeffect.h"
 
 struct ChainSettings {
-    float flangerRatio {0}, flangerLFO {0}, flangerInvert {0}, flangerDepth {0}, modelorder{70}, flangerBase {0}, passthrough {0};
+    float flangerRatio {0}, flangerLFO {0}, flangerInvert {0}, flangerDepth {0}, modelorder{70}, flangerBase {0}, passthrough {0}, shift {1};
     bool stutter {false};
 };
 

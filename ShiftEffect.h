@@ -8,16 +8,32 @@ using namespace kfr;
 class ShiftEffect {
 public:
     ShiftEffect();
-    univector<float> shiftSignal(const univector<float>& input);
+    univector<float> shiftSignal(const univector<float>& input, float shift);
 
 private:
-    univector<float> absOf(const univector<std::complex<float>>& ofBuffer);
-    univector<std::complex<float>> makeComplex(const univector<float>& ofBuffer);
-    univector<std::complex<float>> expComplex(const univector<std::complex<float>>& ofBuffer);
-    univector<float> modulo(const univector<float>& a, float b);
+    static void mulVectorWith(univector<float>& vec1, const univector<float>& vec2);
+    static void mulVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2);
+    static univector<float> absOf(const univector<std::complex<float>>& ofBuffer);
+    static univector<std::complex<float>> makeComplex(const univector<float>& ofBuffer);
+    static univector<std::complex<float>> expComplex(const univector<std::complex<float>>& ofBuffer);
+    static univector<float> modulo(const univector<float>& a, float b);
+
+    univector<std::complex<float>> padFFT(const univector<float>& input) const;
+    univector<float> cutIFFT(const univector<std::complex<float>>& input) const;
 
     const float pi = 2 * acos(0.0);
-    const int LEN = 1000;
-    // or hanning there TODO
-    univector<fbase, 1000> hannWindow = window_hann(1000);
+    const int LEN = 1024;
+    univector<fbase, 1024> hannWindow = window_hann(1024);
+    const int synthesisHop = 150;
+
+    univector<float> psi;
+    univector<int> ramp;
+    univector<float> omega;
+    univector<std::complex<float>> fftGrain;
+    univector<float> phi;
+    univector<float> previousPhi;
+    univector<float> delta;
+    univector<float> f1;
+    univector<std::complex<float>> corrected;
+
 };

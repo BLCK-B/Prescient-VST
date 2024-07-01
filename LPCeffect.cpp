@@ -20,7 +20,7 @@ LPCeffect::LPCeffect() :
 }
 
 // add received samples to buffers, process once buffer full
-float LPCeffect::sendSample(float carrierSample, float voiceSample, int modelorder, bool stutter, float passthrough) {
+float LPCeffect::sendSample(float carrierSample, float voiceSample, int modelorder, bool stutter, float passthrough, float shift) {
     carrierBuffer1[index] = carrierSample;
     sideChainBuffer1[index] = voiceSample;
     if (index2 >= hopSize & overlap != 0) {
@@ -31,16 +31,16 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, int modelord
     ++index2;
     if (index == windowSize) {
         index = 0;
-        if (!stutter)
-            doLPC(true, passthrough);
-        doShift(true,filteredBuffer1);
+//        if (!stutter)
+//            doLPC(true, passthrough);
+        doShift(true,sideChainBuffer1, shift);
         tempmodelorder = modelorder;
     }
     else if (index2 == hopSize + windowSize && overlap != 0) {
         index2 = hopSize;
-        if (!stutter)
-            doLPC(false, passthrough);
-        doShift(false,filteredBuffer2);
+//        if (!stutter)
+//            doLPC(false, passthrough);
+        doShift(false,sideChainBuffer2, shift);
     }
     float output = filteredBuffer1[index];
     if (index2 >= hopSize & overlap != 0)
@@ -72,13 +72,16 @@ void LPCeffect::doLPC(bool firstBuffers, float passthrough) {
     }
 }
 
-void LPCeffect::doShift(bool firstBuffers, const univector<float>& input) {
-    univector<float> shifted = shiftEffect.shiftSignal(input);
-    std::cout<<shifted.size()<<", "<<input.size()<<"\n";
-    if (firstBuffers)
+void LPCeffect::doShift(bool firstBuffers, const univector<float>& input, float shift) {
+    univector<float> shifted = shiftEffect.shiftSignal(input, shift);
+    if (firstBuffers) {
         std::memcpy(filteredBuffer1.data(), shifted.data(), shifted.size() * sizeof(float));
-    else
+        filteredBuffer1 = mul(filteredBuffer1, matchPower(filteredBuffer1, sideChainBuffer1));
+    }
+    else {
         std::memcpy(filteredBuffer2.data(), shifted.data(), shifted.size() * sizeof(float));
+        filteredBuffer2 = mul(filteredBuffer2, matchPower(filteredBuffer2, sideChainBuffer2));
+    }
 }
 
 univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients) {

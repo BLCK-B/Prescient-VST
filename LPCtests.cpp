@@ -5,10 +5,9 @@
 // manual tests for initial verification of values
 class LPCtests {
 
-    public:
+public:
 
-    void levinsonDurbinTest()
-    {
+    void levinsonDurbinTest() {
         // data setup
         const int modelOrder = 6;
         std::vector<float> corrCoeff = {1.0, 0.1732, -0.5073, -0.2528, 0.2726, 0.1341, -0.3024};
@@ -26,7 +25,7 @@ class LPCtests {
         for (int r = 0; r <= modelOrder; ++r)
             a[r][r] = 1;
 
-        k[0] = - corrCoeff[1] / corrCoeff[0];
+        k[0] = -corrCoeff[1] / corrCoeff[0];
         a[1][0] = k[0];
         float kTo2 = std::pow(k[0], 2);
         E[0] = (1 - kTo2) * corrCoeff[0];
@@ -34,25 +33,26 @@ class LPCtests {
         for (int i = 2; i <= modelOrder; ++i) {
             float sum = 0.f;
             for (int j = 0; j <= i; ++j) {
-                sum += a[i-1][j] * corrCoeff[j + 1];
+                sum += a[i - 1][j] * corrCoeff[j + 1];
             }
-            k[i-1] = - sum / E[i - 1-1];
-            a[i][0] = k[i-1];
+            k[i - 1] = -sum / E[i - 1 - 1];
+            a[i][0] = k[i - 1];
 
             for (int j = 1; j < i; ++j) {
-                a[i][j] = a[i-1][j-1] + k[i-1] * a[i-1][i-j-1];
+                a[i][j] = a[i - 1][j - 1] + k[i - 1] * a[i - 1][i - j - 1];
             }
 
-            kTo2 = std::pow(k[i-1],2);
-            E[i-1] = (1 - kTo2) * E[i - 2];
+            kTo2 = std::pow(k[i - 1], 2);
+            E[i - 1] = (1 - kTo2) * E[i - 2];
 
-            std::cout<<"LPC coeffs\n";
+            std::cout << "LPC coeffs\n";
             for (int col = 0; col <= modelOrder; ++col) {
                 for (int row = 0; row <= modelOrder; ++row) {
                     std::cout << std::setprecision(5) << a[row][col] << " ";
                 }
                 std::cout << "\n";
-            } std::cout << "\n\n";
+            }
+            std::cout << "\n\n";
         }
 //        std::cout<<"LPC coeffs\n";
 //        for (int col = 0; col <= modelOrder; ++col) {
@@ -92,13 +92,13 @@ class LPCtests {
         univector<std::complex<float>> H = realdft(paddedLPC);
         univector<std::complex<float>> Y = X / H;
         univector<float> filteredBuffer = irealdft(Y);
-        for (float & i : filteredBuffer) {
+        for (float &i: filteredBuffer) {
             i *= 0.1;
         }
 
         // verification
         bool pass = true;
-        std::vector<float> expected =  {-0.25, -0.02, -0.10, -0.31, -0.04, 0.56, 1.06, 0.91, 0.59, -0.22};
+        std::vector<float> expected = {-0.25, -0.02, -0.10, -0.31, -0.04, 0.56, 1.06, 0.91, 0.59, -0.22};
         for (int i = 0; i < windowSize; ++i) {
             std::cout << filteredBuffer[i] << "\n";
             if (std::abs(filteredBuffer[i] - expected[i]) > 0.01)
@@ -122,7 +122,7 @@ class LPCtests {
         univector<std::complex<float>> H = realdft(paddedLPC);
         univector<std::complex<float>> Y = X * H;
         univector<float> e = irealdft(Y);
-        for (float &x : e)
+        for (float &x: e)
             x *= 0.1;
 
         // verification
@@ -131,7 +131,7 @@ class LPCtests {
         for (int i = 0; i < expected.size(); ++i) {
 //            if (std::abs(e[i] - expected[i]) > 0.0001)
 //                pass = false;
-            std::cout<< e[i] << "\n";
+            std::cout << e[i] << "\n";
         }
         if (pass)
             std::cout << "PASSED convolution test\n";
@@ -140,9 +140,9 @@ class LPCtests {
     }
 
 
-    void shiftSignal() {
+    void shiftSignalTest() {
         const float pi = 2 * acos(0.0);
-        univector<float> input = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};
+        univector<float> input = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
         int LEN = 2;
         int analysisHop = 4;
         int synthesisHop = 2;
@@ -157,66 +157,84 @@ class LPCtests {
         for (int i = 0; i < resampledLEN; ++i)
             x[i] = (1 + (float) i * LEN / resampledLEN);
         univector<float> output(input.size() + resampledLEN, 0.f);
-        univector<float> omega;
-        for (int i = 0; i < LEN; ++i)
-            omega.push_back(2 * pi * analysisHop * i / LEN);
+        univector<float> omega(LEN, 0.f);
+        for (int oi = 0; oi < LEN; ++oi)
+            omega[oi] = 2 * pi * analysisHop * oi / LEN;
 
         int endCycle = std::floor(input.size() - std::max(LEN, ramp[LEN - 1]));
-        std::cout << "end is near" << endCycle;
         for (int anCycle = 0; anCycle < endCycle; anCycle += analysisHop) {
-            univector<float> grain;
-            for (int i = anCycle; i < anCycle + LEN; ++i)
-                grain.push_back(input[i]);
-
-            univector<std::complex<float>> fftGrain = realdft(grain);
+            univector<float> grain(input.begin() + anCycle, input.begin() + anCycle + LEN);
+            univector<std::complex<float>> fftGrain = padFFT(grain);
             // phase information: output psi
             univector<float> phi = -carg(fftGrain);
             univector<float> delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
             psi = modulo(psi + delta * synthesisHop / analysisHop + pi, -2 * pi) + pi;
             previousPhi = phi;
+
             // shifting: output correction factor
-            univector<float> temp;
-            for (int r : ramp)
-                temp.push_back(input[anCycle + r - 1] / (LEN * 0.5));
-            univector<float> f1 = absOf(realdft(temp));
-            univector<std::complex<float>> diff = f1 - fftGrain;
-            univector<float> realDiff = irealdft(diff) / 2;
-            univector<std::complex<float>> corrected = absOf(fftGrain) * std::exp(realDiff[0]) * expComplex(makeComplex(psi));
+            univector<float> temp(LEN, 0.f);
+            std::transform(ramp.begin(), ramp.begin() + LEN, temp.begin(),
+                           [&](int r) { return input[anCycle + r - 1] / (LEN * 0.5); });
+            univector<float> f1 = absOf(padFFT(temp));
+            univector<std::complex<float>> corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0] / 2));
+            mulVectorWith(corrected, expComplex(makeComplex(psi)));
+
             // interpolation
-            grain = real(irealdft(corrected)) / 2;
-            for (int i = anCycle; i < anCycle + resampledLEN; ++i)
-                output[i] += grain[std::floor(x[i - anCycle]) - 1];
+            grain = real(cutIFFT(corrected)) / 2;
+            for (int ai = anCycle; ai < anCycle + resampledLEN; ++ai)
+                output[ai] += grain[std::floor(x[ai - anCycle]) - 1];
         }
-        univector<float> result(input.size());
-        std::copy(output.begin(), output.begin() + input.size(), result.begin());
-        
-        for (auto& x : result)
-            std::cout<< x << "\n";
+
+        univector<float> result(output.begin(), output.begin() + input.size());
+
+        for (auto &x: result)
+            std::cout << x << "\n";
     }
 
-    univector<float> absOf(const univector<std::complex<float>>& ofBuffer) {
+    void mulVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2) {
+        std::transform(vec1.begin(), vec1.end(), vec2.begin(), vec1.begin(), std::multiplies<>());
+    }
+
+    univector<float> absOf(const univector<std::complex<float>> &ofBuffer) {
         univector<float> result;
-        for (auto& x : ofBuffer)
+        for (auto &x: ofBuffer)
             result.push_back(abs(x));
         return result;
     }
 
-    univector<std::complex<float>> makeComplex(const univector<float>& ofBuffer) {
+    univector<std::complex<float>> makeComplex(const univector<float> &ofBuffer) {
         univector<std::complex<float>> result;
-        for (auto& x : ofBuffer)
+        for (auto &x: ofBuffer)
             result.push_back(make_complex(0.f, x));
         return result;
     }
 
     univector<std::complex<float>> expComplex(const univector<std::complex<float>>& ofBuffer) {
         univector<std::complex<float>> result;
-        for (auto& x : ofBuffer)
-            result.push_back(std::exp(x));
+        result.reserve(ofBuffer.size());
+        std::transform(ofBuffer.begin(), ofBuffer.end(), std::back_inserter(result), [](const std::complex<float>& x) {
+            return std::exp(x);
+        });
         return result;
     }
 
-    univector<float> modulo(const univector<float>& a,const float b) {
+    univector<float> modulo(const univector<float> &a, const float b) {
         return a - floor(a / b) * b;
+    }
+
+    /** FFT and filling the other half with zeroes */
+    univector<std::complex<float>> padFFT(const univector<float> &input) {
+        univector<std::complex<float>> buff = realdft(input);
+        univector<std::complex<float>> result(2, 0.f);
+        std::copy(buff.begin(), buff.end(), result.begin());
+        return result;
+    }
+
+    /** cutting the other half (of zeroes) and IFFT */
+    univector<float> cutIFFT(const univector<std::complex<float>> &input) {
+        univector<std::complex<float>> buff(2 / 2 + 1, 0.f);
+        std::copy(input.begin(), input.begin() + input.size() / 2 + 1, buff.begin());
+        return irealdft(buff);
     }
 
 };

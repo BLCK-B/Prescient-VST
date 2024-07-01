@@ -18,6 +18,7 @@ MyAudioProcessor::MyAudioProcessor()
     treeState.addParameterListener("model order", this);
     treeState.addParameterListener("passthrough", this);
     treeState.addParameterListener("stutter", this);
+    treeState.addParameterListener("shift", this);
 }
 
 MyAudioProcessor::~MyAudioProcessor()
@@ -34,6 +35,7 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.modelorder = treeState.getRawParameterValue("model order")->load();
     settings.passthrough = treeState.getRawParameterValue("passthrough")->load();
     settings.stutter = treeState.getRawParameterValue("stutter")->load();
+    settings.shift = treeState.getRawParameterValue("shift")->load();
 
     return settings;
 }
@@ -65,6 +67,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
            juce::NormalisableRange<float>(0.f, 0.5f, 0.1f, 1.f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterBool>("stutter", "stutter", false));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("shift", "shift",
+           juce::NormalisableRange<float>(0.3f, 2.f, 0.05f, 1.f), 1.f));
 
     return layout;
 }
@@ -144,6 +149,7 @@ void MyAudioProcessor::changeProgramName (int index, const juce::String& newName
 void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     chainSettings.modelorder = 70;
+    chainSettings.shift = 1.f;
     setLatencySamples(lpcEffect[0].getLatency());
     juce::ignoreUnused (sampleRate, samplesPerBlock);
     juce::dsp::ProcessSpec spec{};
@@ -161,7 +167,7 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 //    lpCtests.levinsonDurbinTest();
 //    lpCtests.IIRfilterTest();
 //    lpCtests.convolutionFFT();
-//    lpCtests.shiftSignal();
+//    lpCtests.shiftSignalTest();
 }
 
 void MyAudioProcessor::releaseResources()
@@ -200,18 +206,18 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
-//        float sampleSideChainL = sideChain.getReadPointer(0)[sample];
-//        float sampleSideChainR = sideChain.getReadPointer(1)[sample];
-        float sampleSideChainL = 0;
-        float sampleSideChainR = 0;
+        float sampleSideChainL = sideChain.getReadPointer(0)[sample];
+        float sampleSideChainR = sideChain.getReadPointer(1)[sample];
+//        float sampleSideChainL = 0;
+//        float sampleSideChainR = 0;
 
         // LPC
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
 //        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 //        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
-        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, (int) chainSettings.modelorder, chainSettings.stutter, chainSettings.passthrough);
-        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, (int) chainSettings.modelorder, chainSettings.stutter, chainSettings.passthrough);
+        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, (int) chainSettings.modelorder, chainSettings.stutter, chainSettings.passthrough, chainSettings.shift);
+        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, (int) chainSettings.modelorder, chainSettings.stutter, chainSettings.passthrough, chainSettings.shift);
 
 //        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
 
