@@ -23,7 +23,8 @@ private:
     };
 
     void doLPC(bool firstBuffers, float passthrough);
-    void doShift(bool firstBuffers, const univector<float>& input, float shift);
+    void doLPC(univector<float>& flow, bool firstBuffers, float passthrough);
+    univector<float> doShift(bool firstBuffers, const univector<float>& input, float shift);
     univector<float> autocorrelation(const univector<float>& fromBufer, bool saveFFT);
     [[nodiscard]] univector<float> levinsonDurbin(const univector<float>& ofBuffer) const;
     univector<float> getResiduals(const univector<float>& ofBuffer);

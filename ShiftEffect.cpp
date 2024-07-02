@@ -15,7 +15,7 @@ ShiftEffect::ShiftEffect():
 }
 
 univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float shift) {
-    if (shift < 1.05 && shift > 0.95)
+    if (shift < 1.03 && shift > 0.98)
         return input;
     const int analysisHop = static_cast<int>(synthesisHop / shift);
     for (int i = 0; i < LEN; ++i)
@@ -28,33 +28,29 @@ univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float s
     for (int oi = 0; oi < LEN; ++oi)
         omega[oi] = 2 * pi * analysisHop * oi / LEN;
 
-    int endCycle = std::floor(input.size() - std::max(LEN, ramp[LEN - 1]));
-    for (int anCycle = 0; anCycle < endCycle; anCycle += analysisHop) {
-        univector<float> grain(input.begin() + anCycle, input.begin() + anCycle + LEN);
-        mulVectorWith(grain, hannWindow);
-        fftGrain = padFFT(grain);
+    univector<float> grain(input.begin() + 0, input.begin() + 0 + LEN);
+    mulVectorWith(grain, hannWindow);
+    fftGrain = padFFT(grain);
+    // phase information: output psi
+    phi = -carg(fftGrain);
+    delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
+    psi = modulo(psi + mul(delta, synthesisHop / analysisHop) + pi, -2 * pi) + pi;
+    previousPhi = phi;
 
-        // phase information: output psi
-        phi = -carg(fftGrain);
-        delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
-        psi = modulo(psi + mul(delta, synthesisHop / analysisHop) + pi, -2 * pi) + pi;
-        previousPhi = phi;
+    // shifting: output correction factor
+//    univector<float> temp(LEN, 0.f);
+//    std::transform(ramp.begin(), ramp.begin() + LEN, temp.begin(),
+//                   [&](int r) { return input[0 + r - 1] / (LEN * 0.5); });
 
-        // shifting: output correction factor
-        univector<float> temp(LEN, 0.f);
-        std::transform(ramp.begin(), ramp.begin() + LEN, temp.begin(),
-                       [&](int r) { return input[anCycle + r - 1] / (LEN * 0.5); });
-        mulVectorWith(temp, hannWindow);
-        f1 = absOf(padFFT(temp));
-        corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0] / 2));
-        mulVectorWith(corrected, expComplex(makeComplex(psi)));
+    f1 = absOf(padFFT(input * hannWindow) / LEN);
+    corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0] / 2));
+    mulVectorWith(corrected, expComplex(makeComplex(psi)));
 
-        // interpolation
-        grain = real(cutIFFT(corrected)) / 2;
-        mulVectorWith(grain, hannWindow);
-        for (int ai = anCycle; ai < anCycle + resampledLEN; ++ai)
-            output[ai] += grain[std::floor(x[ai - anCycle]) - 1];
-    }
+    // interpolation
+    grain = real(cutIFFT(corrected)) / 2;
+    mulVectorWith(grain, hannWindow);
+    for (int ai = 0; ai < 0 + resampledLEN; ++ai)
+        output[ai] += grain[std::floor(x[ai - 0]) - 1];
     return {output.begin(), output.begin() + input.size()};
 }
 

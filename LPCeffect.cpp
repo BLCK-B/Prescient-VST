@@ -31,16 +31,18 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, int modelord
     ++index2;
     if (index == windowSize) {
         index = 0;
-//        if (!stutter)
-//            doLPC(true, passthrough);
-        doShift(true,sideChainBuffer1, shift);
+        if (!stutter) {
+            univector<float> flow = doShift(true, sideChainBuffer1, shift);
+            doLPC(flow, true, passthrough);
+        }
         tempmodelorder = modelorder;
     }
     else if (index2 == hopSize + windowSize && overlap != 0) {
         index2 = hopSize;
-//        if (!stutter)
-//            doLPC(false, passthrough);
-        doShift(false,sideChainBuffer2, shift);
+        if (!stutter) {
+            univector<float> flow = doShift(false, sideChainBuffer2, shift);
+            doLPC(flow, false, passthrough);
+        }
     }
     float output = filteredBuffer1[index];
     if (index2 >= hopSize & overlap != 0)
@@ -72,16 +74,36 @@ void LPCeffect::doLPC(bool firstBuffers, float passthrough) {
     }
 }
 
-void LPCeffect::doShift(bool firstBuffers, const univector<float>& input, float shift) {
-    univector<float> shifted = shiftEffect.shiftSignal(input, shift);
+void LPCeffect::doLPC(univector<float>& flow, bool firstBuffers, float passthrough) {
     if (firstBuffers) {
-        std::memcpy(filteredBuffer1.data(), shifted.data(), shifted.size() * sizeof(float));
-        filteredBuffer1 = mul(filteredBuffer1, matchPower(filteredBuffer1, sideChainBuffer1));
+        if (tempFill1) {
+            tempBuffer1 += mul(sideChainBuffer1, passthrough);
+            std::memcpy(filteredBuffer1.data(), tempBuffer1.data(), tempBuffer1.size() * sizeof(float));
+        }
+        univector<float> LPCvoice = levinsonDurbin(autocorrelation(flow, false));
+        tempBuffer1 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer1), LPCvoice);
+        tempBuffer1 = mul(tempBuffer1, matchPower(sideChainBuffer1, tempBuffer1));
+        tempFill1 = true;
     }
     else {
-        std::memcpy(filteredBuffer2.data(), shifted.data(), shifted.size() * sizeof(float));
-        filteredBuffer2 = mul(filteredBuffer2, matchPower(filteredBuffer2, sideChainBuffer2));
+        if (tempFill2) {
+            tempBuffer2 += mul(sideChainBuffer2, passthrough);
+            std::memcpy(filteredBuffer2.data(), tempBuffer2.data(), tempBuffer2.size() * sizeof(float));
+        }
+        univector<float> LPCvoice = levinsonDurbin(autocorrelation(flow, false));
+        tempBuffer2 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer2), LPCvoice);
+        tempBuffer2 = mul(tempBuffer2, matchPower(sideChainBuffer2, tempBuffer2));
+        tempFill2 = true;
     }
+}
+
+univector<float> LPCeffect::doShift(bool firstBuffers, const univector<float>& input, float shift) {
+    univector<float> shifted = shiftEffect.shiftSignal(input, shift);
+    if (firstBuffers)
+        shifted = mul(shifted, matchPower(sideChainBuffer1, shifted));
+    else
+        shifted = mul(shifted, matchPower(sideChainBuffer1, shifted));
+    return shifted;
 }
 
 univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients) {

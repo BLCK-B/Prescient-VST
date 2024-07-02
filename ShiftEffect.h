@@ -22,9 +22,9 @@ private:
     univector<float> cutIFFT(const univector<std::complex<float>>& input) const;
 
     const float pi = 2 * acos(0.0);
-    const int LEN = 1024;
-    univector<fbase, 1024> hannWindow = window_hann(1024);
-    const int synthesisHop = 150;
+    const int LEN = 2048;
+    univector<fbase, 2048> hannWindow = window_hann(2048);
+    const int synthesisHop = 250;
 
     univector<float> psi;
     univector<int> ramp;
