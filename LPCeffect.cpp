@@ -12,15 +12,13 @@ LPCeffect::LPCeffect() :
         sideChainBuffer1(windowSize),
         sideChainBuffer2(windowSize),
         filteredBuffer1(windowSize, 0.f),
-        filteredBuffer2(windowSize, 0.f),
-        tempBuffer1(windowSize, 0.f),
-        tempBuffer2(windowSize, 0.f)
+        filteredBuffer2(windowSize, 0.f)
 {
     jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
 }
 
 // add received samples to buffers, process once buffer full
-float LPCeffect::sendSample(float carrierSample, float voiceSample, int modelorder, bool stutter, float passthrough, float shift) {
+float LPCeffect::sendSample(float carrierSample, float voiceSample, const ChainSettings& chainSettings) {
     carrierBuffer1[index] = carrierSample;
     sideChainBuffer1[index] = voiceSample;
     if (index2 >= hopSize & overlap != 0) {
@@ -31,18 +29,12 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, int modelord
     ++index2;
     if (index == windowSize) {
         index = 0;
-        if (!stutter) {
-            univector<float> flow = doShift(true, sideChainBuffer1, shift);
-            doLPC(flow, true, passthrough);
-        }
-        tempmodelorder = modelorder;
+        processing(filteredBuffer1, sideChainBuffer1, carrierBuffer1, chainSettings);
+        frameModelOrder = static_cast<int>(chainSettings.modelorder);
     }
     else if (index2 == hopSize + windowSize && overlap != 0) {
         index2 = hopSize;
-        if (!stutter) {
-            univector<float> flow = doShift(false, sideChainBuffer2, shift);
-            doLPC(flow, false, passthrough);
-        }
+        processing(filteredBuffer2, sideChainBuffer2, carrierBuffer2, chainSettings);
     }
     float output = filteredBuffer1[index];
     if (index2 >= hopSize & overlap != 0)
@@ -51,59 +43,28 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, int modelord
     return output;
 }
 
-void LPCeffect::doLPC(bool firstBuffers, float passthrough) {
-    if (firstBuffers) {
-        if (tempFill1) {
-            tempBuffer1 += mul(sideChainBuffer1, passthrough);
-            std::memcpy(filteredBuffer1.data(), tempBuffer1.data(), tempBuffer1.size() * sizeof(float));
-        }
-        univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer1, false));
-        tempBuffer1 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer1), LPCvoice);
-        tempBuffer1 = mul(tempBuffer1, matchPower(sideChainBuffer1, tempBuffer1));
-        tempFill1 = true;
-    }
-    else {
-        if (tempFill2) {
-            tempBuffer2 += mul(sideChainBuffer2, passthrough);
-            std::memcpy(filteredBuffer2.data(), tempBuffer2.data(), tempBuffer2.size() * sizeof(float));
-        }
-        univector<float> LPCvoice = levinsonDurbin(autocorrelation(sideChainBuffer2, false));
-        tempBuffer2 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer2), LPCvoice);
-        tempBuffer2 = mul(tempBuffer2, matchPower(sideChainBuffer2, tempBuffer2));
-        tempFill2 = true;
-    }
+void LPCeffect::processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings) {
+    univector<float> result = voice;
+//    if (chainSettings.preshift) {
+        result = shiftEffect.shiftSignal(result, chainSettings.shift);
+        matchPower(result, voice);
+//    }
+//    if (chainSettings.enableLPC) {
+        result = processLPC(result, carrier);
+        matchPower(result, voice);
+//    }
+//    if (!chainSettings.preshift) {
+//        result = shiftEffect.shiftSignal(result, chainSettings.shift);
+//        matchPower(result, voice);
+//    }
+    if (chainSettings.passthrough > 0.05)
+        result += mul(voice, chainSettings.passthrough);
+    std::memcpy(overwrite.data(), result.data(), result.size() * sizeof(float));
 }
 
-void LPCeffect::doLPC(univector<float>& flow, bool firstBuffers, float passthrough) {
-    if (firstBuffers) {
-        if (tempFill1) {
-            tempBuffer1 += mul(sideChainBuffer1, passthrough);
-            std::memcpy(filteredBuffer1.data(), tempBuffer1.data(), tempBuffer1.size() * sizeof(float));
-        }
-        univector<float> LPCvoice = levinsonDurbin(autocorrelation(flow, false));
-        tempBuffer1 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer1), LPCvoice);
-        tempBuffer1 = mul(tempBuffer1, matchPower(sideChainBuffer1, tempBuffer1));
-        tempFill1 = true;
-    }
-    else {
-        if (tempFill2) {
-            tempBuffer2 += mul(sideChainBuffer2, passthrough);
-            std::memcpy(filteredBuffer2.data(), tempBuffer2.data(), tempBuffer2.size() * sizeof(float));
-        }
-        univector<float> LPCvoice = levinsonDurbin(autocorrelation(flow, false));
-        tempBuffer2 = FFToperations(FFToperation::IIR, getResiduals(carrierBuffer2), LPCvoice);
-        tempBuffer2 = mul(tempBuffer2, matchPower(sideChainBuffer2, tempBuffer2));
-        tempFill2 = true;
-    }
-}
-
-univector<float> LPCeffect::doShift(bool firstBuffers, const univector<float>& input, float shift) {
-    univector<float> shifted = shiftEffect.shiftSignal(input, shift);
-    if (firstBuffers)
-        shifted = mul(shifted, matchPower(sideChainBuffer1, shifted));
-    else
-        shifted = mul(shifted, matchPower(sideChainBuffer1, shifted));
-    return shifted;
+univector<float> LPCeffect::processLPC(const univector<float>& voice, const univector<float>& carrier) {
+    univector<float> LPCvoice = levinsonDurbin(autocorrelation(voice, false));
+    return FFToperations(FFToperation::IIR, getResiduals(carrier), LPCvoice);
 }
 
 univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients) {
@@ -112,7 +73,6 @@ univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>
 
     univector<std::complex<float>> fftInp = o == FFToperation::Convolution ? FFTcache : realdft(inputBuffer);
     univector<std::complex<float>> fftCoeff = realdft(paddedCoeff);
-
     switch (o) {
         case FFToperation::Convolution:
             mulVectorWith(fftInp, fftCoeff);
@@ -128,8 +88,7 @@ univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>
 univector<float> LPCeffect::getResiduals(const univector<float>& ofBuffer) {
     univector<float> corrCoeff = autocorrelation(ofBuffer, true);
     univector<float> LPC = levinsonDurbin(corrCoeff);
-    univector<float> e = FFToperations(FFToperation::Convolution, ofBuffer, LPC);
-    return e;
+    return FFToperations(FFToperation::Convolution, ofBuffer, LPC);
 }
 
 univector<float> LPCeffect::autocorrelation(const univector<float>& ofBuffer, bool saveFFT) {
@@ -144,12 +103,12 @@ univector<float> LPCeffect::autocorrelation(const univector<float>& ofBuffer, bo
 }
 
 univector<float> LPCeffect::levinsonDurbin(const univector<float>& corrCoeff) const {
-    std::vector<float> k(tempmodelorder + 1);
-    std::vector<float> E(tempmodelorder + 1);
+    std::vector<float> k(frameModelOrder + 1);
+    std::vector<float> E(frameModelOrder + 1);
     // matrix of coefficients a[j][i] j = row, i = column
-    std::vector<std::vector<float>> a(tempmodelorder + 1, std::vector<float>(tempmodelorder + 1, 0.0f));
+    std::vector<std::vector<float>> a(frameModelOrder + 1, std::vector<float>(frameModelOrder + 1, 0.0f));
     // init
-    for (int r = 0; r <= tempmodelorder; ++r)
+    for (int r = 0; r <= frameModelOrder; ++r)
         a[r][r] = 1;
 
     k[0] = - corrCoeff[1] / corrCoeff[0];
@@ -157,7 +116,7 @@ univector<float> LPCeffect::levinsonDurbin(const univector<float>& corrCoeff) co
     auto kTo2 = std::pow(k[0], 2);
     E[0] = static_cast<float>((1 - kTo2) * corrCoeff[0]);
 
-    for (int i = 2; i <= tempmodelorder; ++i) {
+    for (int i = 2; i <= frameModelOrder; ++i) {
         float sum = 0.f;
         for (int j = 0; j <= i; ++j) {
             sum += a[i-1][j] * corrCoeff[j + 1];
@@ -172,24 +131,24 @@ univector<float> LPCeffect::levinsonDurbin(const univector<float>& corrCoeff) co
         kTo2 = std::pow(k[i-1],2);
         E[i-1] = static_cast<float>((1 - kTo2) * E[i - 2]);
     }
-    univector<float> LPCcoeffs(tempmodelorder);
-    for (int x = 0; x <= tempmodelorder; ++x)
-        LPCcoeffs.push_back(a[tempmodelorder][tempmodelorder - x]);
+    univector<float> LPCcoeffs(frameModelOrder);
+    for (int x = 0; x <= frameModelOrder; ++x)
+        LPCcoeffs.push_back(a[frameModelOrder][frameModelOrder - x]);
 
     return LPCcoeffs;
 }
 
-float LPCeffect::matchPower(const univector<float>& original, const univector<float>& output) const {
-    float sumOfSquares = std::inner_product(original.begin(), original.end(), original.begin(), 0.0f);
-    float signalPower = std::sqrt(sumOfSquares / static_cast<float>(windowSize));
+void LPCeffect::matchPower(univector<float>& input, const univector<float>& reference) const {
+    float sumOfSquares = std::inner_product(reference.begin(), reference.end(), reference.begin(), 0.0f);
+    float signalPower1 = std::sqrt(sumOfSquares / static_cast<float>(windowSize));
 
-    sumOfSquares = std::inner_product(output.begin(), output.end(), output.begin(), 0.0f);
+    sumOfSquares = std::inner_product(input.begin(), input.end(), input.begin(), 0.0f);
     float signalPower2 = std::sqrt(sumOfSquares / static_cast<float>(windowSize));
 
-    if (signalPower < signalPower2)
-        return signalPower / signalPower2;
+    if (signalPower1 < signalPower2)
+        input = mul(input, signalPower1 / signalPower2);
     else
-        return signalPower2 / signalPower;
+        input = mul(input, signalPower2 / signalPower1);
 }
 
 void LPCeffect::mulVectorWith(univector<float>& vec1, const univector<float>& vec2) {

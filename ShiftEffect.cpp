@@ -38,10 +38,6 @@ univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float s
     previousPhi = phi;
 
     // shifting: output correction factor
-//    univector<float> temp(LEN, 0.f);
-//    std::transform(ramp.begin(), ramp.begin() + LEN, temp.begin(),
-//                   [&](int r) { return input[0 + r - 1] / (LEN * 0.5); });
-
     f1 = absOf(padFFT(input * hannWindow) / LEN);
     corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0] / 2));
     mulVectorWith(corrected, expComplex(makeComplex(psi)));

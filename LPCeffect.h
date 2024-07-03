@@ -9,26 +9,30 @@
 #endif //AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
 using namespace kfr;
 
+struct ChainSettings {
+    float modelorder{70}, flangerBase {0}, passthrough {0}, shift {1};
+    bool enableLPC {true}, preshift {true};
+};
+
 class LPCeffect {
 public:
     LPCeffect();
     [[nodiscard]] int getLatency() const {
         return windowSize;
     }
-    float sendSample(float sample, float sidechain, int modelorder, bool stutter, float passthrough, float shift);
+    float sendSample(float carrierSample, float voiceSample, const ChainSettings& chainSettings);
 
 private:
     enum class FFToperation {
         Convolution, IIR
     };
 
-    void doLPC(bool firstBuffers, float passthrough);
-    void doLPC(univector<float>& flow, bool firstBuffers, float passthrough);
-    univector<float> doShift(bool firstBuffers, const univector<float>& input, float shift);
+    univector<float> processLPC(const univector<float>& voice, const univector<float>& carrier);
+    void processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings);
     univector<float> autocorrelation(const univector<float>& fromBufer, bool saveFFT);
     [[nodiscard]] univector<float> levinsonDurbin(const univector<float>& ofBuffer) const;
     univector<float> getResiduals(const univector<float>& ofBuffer);
-    [[nodiscard]] float matchPower(const univector<float>& original, const univector<float>& output) const;
+    void matchPower(univector<float>& input, const univector<float>& reference) const;
     univector<float> FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients);
     static void mulVectorWith(univector<float>& vec1, const univector<float>& vec2);
     static void mulVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2);
@@ -47,7 +51,7 @@ private:
     const int overlapSize = round(windowSize * overlap);
     const int hopSize = windowSize - overlapSize;
 
-    int tempmodelorder = 70;
+    int frameModelOrder = 70;
 
     univector<float> carrierBuffer1;
     univector<float> carrierBuffer2;
@@ -55,11 +59,6 @@ private:
     univector<float> sideChainBuffer2;
     univector<float> filteredBuffer1;
     univector<float> filteredBuffer2;
-    univector<float> tempBuffer1;
-    univector<float> tempBuffer2;
-
-    bool tempFill1 = false;
-    bool tempFill2 = false;
 
     univector<std::complex<float>> FFTcache;
 
