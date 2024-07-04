@@ -14,39 +14,48 @@ ShiftEffect::ShiftEffect():
     jassert(LEN % 2 == 0);
 }
 
-univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float shift) {
-    if (shift < 1.05 && shift > 0.95)
+univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float shift, bool robot) {
+    if (shift < 1.03 && shift > 0.97)
         return input;
     const int analysisHop = static_cast<int>(synthesisHop / shift);
-    for (int i = 0; i < LEN; ++i)
-        ramp[i] = std::floor((i * analysisHop) / synthesisHop) + 1;
-    int resampledLEN = std::floor(LEN * analysisHop / synthesisHop);
+    const int resampledLEN = std::floor(LEN * analysisHop / synthesisHop);
+
+    std::iota(ramp.begin(), ramp.end(), 1);
+    std::transform(ramp.begin(), ramp.end(), ramp.begin(), [&](int i) {
+        return std::floor((i * analysisHop) / synthesisHop) + 1;
+    });
+
     univector<float> x(resampledLEN, 0.f);
     for (int i = 0; i < resampledLEN; ++i)
         x[i] = (1 + (float) i * LEN / resampledLEN);
-    univector<float> output(input.size() + resampledLEN, 0.f);
-    for (int oi = 0; oi < LEN; ++oi)
-        omega[oi] = 2 * pi * analysisHop * oi / LEN;
 
+    for (int i = 0; i < LEN; ++i)
+        omega[i] = 2 * pi * analysisHop * i / LEN;
+
+    univector<float> output(input.size() + resampledLEN, 0.f);
+    univector<float> grain(LEN);
     int endCycle = std::floor(input.size() - std::max(LEN, ramp[LEN - 1]));
     for (int anCycle = 0; anCycle < endCycle; anCycle += analysisHop) {
-        univector<float> grain(input.begin() + anCycle, input.begin() + anCycle + LEN);
+        std::copy(input.begin() + anCycle, input.begin() + anCycle + LEN, grain.begin());
         mulVectorWith(grain, hannWindow);
         fftGrain = padFFT(grain);
 
         // phase information: output psi
-        phi = carg(fftGrain);
-        delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
-        psi = modulo(psi + delta * synthesisHop / analysisHop + pi, -2 * pi) + pi;
-        previousPhi = phi;
+        if (!robot) {
+            phi = carg(fftGrain);
+            delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
+            psi = modulo(psi + delta * synthesisHop / analysisHop + pi, -2 * pi) + pi;
+            previousPhi = phi;
+        }
 
         // shifting: output correction factor
         f1 = absOf(padFFT(mul(input[anCycle], hannWindow)) / LEN);
-        corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0] ));
-        mulVectorWith(corrected, expComplex(makeComplex(psi)));
+        corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0]));
+        if (!robot)
+            mulVectorWith(corrected, expComplex(makeComplex(psi)));
 
         // interpolation
-        grain = real(cutIFFT(corrected)) ;
+        grain = real(cutIFFT(corrected));
         mulVectorWith(grain, hannWindow);
         for (int ai = anCycle; ai < anCycle + resampledLEN; ++ai)
             output[ai] += grain[std::floor(x[ai - anCycle]) - 1];

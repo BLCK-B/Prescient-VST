@@ -46,7 +46,10 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, const ChainS
 void LPCeffect::processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings) {
     univector<float> result = voice;
 //    if (chainSettings.preshift) {
-        result = shiftEffect.shiftSignal(result, chainSettings.shift);
+//        result = shiftEffect.shiftSignal(result, chainSettings.shift, chainSettings.robot);
+
+        result = shiftEffect.shiftSignal(result, chainSettings.shift, chainSettings.robot);
+
         matchPower(result, voice);
 //    }
 //    if (chainSettings.enableLPC) {
@@ -59,6 +62,7 @@ void LPCeffect::processing(univector<float>& overwrite, const univector<float>& 
 //    }
     if (chainSettings.passthrough > 0.05)
         result += mul(voice, chainSettings.passthrough);
+
     std::memcpy(overwrite.data(), result.data(), result.size() * sizeof(float));
 }
 

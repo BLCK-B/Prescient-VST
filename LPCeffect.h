@@ -11,7 +11,7 @@ using namespace kfr;
 
 struct ChainSettings {
     float modelorder{70}, flangerBase {0}, passthrough {0}, shift {1};
-    bool enableLPC {true}, preshift {true};
+    bool enableLPC {true}, preshift {true}, robot {false};
 };
 
 class LPCeffect {

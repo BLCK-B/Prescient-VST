@@ -8,7 +8,7 @@ using namespace kfr;
 class ShiftEffect {
 public:
     ShiftEffect();
-    univector<float> shiftSignal(const univector<float>& input, float shift);
+    univector<float> shiftSignal(const univector<float>& input, float shift, bool robot);
 
 private:
     static void mulVectorWith(univector<float>& vec1, const univector<float>& vec2);
@@ -24,7 +24,7 @@ private:
     const float pi = 2 * acos(0.0);
     const int LEN = 1024;
     univector<fbase, 1024> hannWindow = window_hann(1024);
-    const int synthesisHop = 350;
+    const int synthesisHop = 300;
 
     univector<float> psi;
     univector<int> ramp;

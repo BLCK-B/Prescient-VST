@@ -15,6 +15,7 @@ MyAudioProcessor::MyAudioProcessor()
     treeState.addParameterListener("enableLPC", this);
     treeState.addParameterListener("preshift", this);
     treeState.addParameterListener("shift", this);
+    treeState.addParameterListener("robot", this);
 }
 
 MyAudioProcessor::~MyAudioProcessor()
@@ -28,6 +29,7 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.shift = treeState.getRawParameterValue("shift")->load();
     settings.enableLPC = treeState.getRawParameterValue("enableLPC")->load();
     settings.preshift = treeState.getRawParameterValue("preshift")->load();
+    settings.robot = treeState.getRawParameterValue("robot")->load();
     return settings;
 }
 
@@ -47,7 +49,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
     layout.add(std::make_unique<juce::AudioParameterBool>("preshift", "shift pre/post", false));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("shift", "shift",
-           juce::NormalisableRange<float>(0.3f, 2.f, 0.05f, 1.f), 1.f));
+           juce::NormalisableRange<float>(0.55f, 2.f, 0.01f, 1.f), 1.f));
+
+    layout.add(std::make_unique<juce::AudioParameterBool>("robot", "robot", false));
 
     return layout;
 }
@@ -105,6 +109,7 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     chainSettings.shift = 1.f;
     chainSettings.enableLPC = true;
     chainSettings.preshift = true;
+    chainSettings.robot = false;
     setLatencySamples(lpcEffect[0].getLatency());
     juce::ignoreUnused (sampleRate, samplesPerBlock);
     juce::dsp::ProcessSpec spec{};
