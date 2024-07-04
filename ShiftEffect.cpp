@@ -14,53 +14,77 @@ ShiftEffect::ShiftEffect():
     jassert(LEN % 2 == 0);
 }
 
-univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float shift, bool robot) {
-    if (shift < 1.03 && shift > 0.97)
+univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float shift, float spread) {
+    if (isCloseTo(shift, 1) && isCloseTo(spread, 0))
         return input;
-    const int analysisHop = static_cast<int>(synthesisHop / shift);
-    const int resampledLEN = std::floor(LEN * analysisHop / synthesisHop);
+    univector<float> finalOutput(input.size(), 0.f);
+    for (int unison = 0; unison <= 4; ++unison) {
+//        TODO: stereo separation
+        float newShift = shift;
+        if (unison == 1)
+            newShift += spread;
+        if (unison == 2)
+            newShift -= spread;
+        if (unison == 3)
+            newShift += 0.5 * spread;
+        if (unison == 4)
+            newShift -= 0.5 * spread;
 
-    std::iota(ramp.begin(), ramp.end(), 1);
-    std::transform(ramp.begin(), ramp.end(), ramp.begin(), [&](int i) {
-        return std::floor((i * analysisHop) / synthesisHop) + 1;
-    });
+        int analysisHop = static_cast<int>(synthesisHop / newShift);
+        const int resampledLEN = std::floor(LEN * analysisHop / synthesisHop);
 
-    univector<float> x(resampledLEN, 0.f);
-    for (int i = 0; i < resampledLEN; ++i)
-        x[i] = (1 + (float) i * LEN / resampledLEN);
+        std::iota(ramp.begin(), ramp.end(), 1);
+        std::transform(ramp.begin(), ramp.end(), ramp.begin(), [&](int i) {
+            return std::floor((i * analysisHop) / synthesisHop) + 1;
+        });
 
-    for (int i = 0; i < LEN; ++i)
-        omega[i] = 2 * pi * analysisHop * i / LEN;
+        univector<float> x(resampledLEN, 0.f);
+        for (int i = 0; i < resampledLEN; ++i)
+            x[i] = (1 + (float) i * LEN / resampledLEN);
 
-    univector<float> output(input.size() + resampledLEN, 0.f);
-    univector<float> grain(LEN);
-    int endCycle = std::floor(input.size() - std::max(LEN, ramp[LEN - 1]));
-    for (int anCycle = 0; anCycle < endCycle; anCycle += analysisHop) {
-        std::copy(input.begin() + anCycle, input.begin() + anCycle + LEN, grain.begin());
-        mulVectorWith(grain, hannWindow);
-        fftGrain = padFFT(grain);
+        for (int i = 0; i < LEN; ++i)
+            omega[i] = 2 * pi * analysisHop * i / LEN;
 
-        // phase information: output psi
-        if (!robot) {
-            phi = carg(fftGrain);
-            delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
-            psi = modulo(psi + delta * synthesisHop / analysisHop + pi, -2 * pi) + pi;
-            previousPhi = phi;
-        }
+        univector<float> overLapOut(input.size() + resampledLEN, 0.f);
+        univector<float> grain(LEN);
+        int endCycle = std::floor(input.size() - std::max(LEN, ramp[LEN - 1]));
+        for (int anCycle = 0; anCycle < endCycle; anCycle += analysisHop) {
+            std::copy(input.begin() + anCycle, input.begin() + anCycle + LEN, grain.begin());
+            mulVectorWith(grain, hannWindow);
+            fftGrain = padFFT(grain);
 
-        // shifting: output correction factor
-        f1 = absOf(padFFT(mul(input[anCycle], hannWindow)) / LEN);
-        corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0]));
-        if (!robot)
+            // phase information: output psi
+            if (unison == 0) {
+                phi = carg(fftGrain);
+                delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
+                psi = modulo(psi + delta * synthesisHop / analysisHop + pi, -2 * pi) + pi;
+                previousPhi = phi;
+            }
+            if (unison == 0 && isCloseTo(shift, 1)) {
+                overLapOut = grain;
+                break;
+            }
+            // shifting: output correction factor
+            f1 = absOf(padFFT(mul(input[anCycle], hannWindow)) / LEN);
+            corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0]));
             mulVectorWith(corrected, expComplex(makeComplex(psi)));
 
-        // interpolation
-        grain = real(cutIFFT(corrected));
-        mulVectorWith(grain, hannWindow);
-        for (int ai = anCycle; ai < anCycle + resampledLEN; ++ai)
-            output[ai] += grain[std::floor(x[ai - anCycle]) - 1];
+            // interpolation
+            grain = real(cutIFFT(corrected));
+            mulVectorWith(grain, hannWindow);
+            for (int ai = anCycle; ai < anCycle + resampledLEN; ++ai)
+                overLapOut[ai] += grain[std::floor(x[ai - anCycle]) - 1];
+        }
+        univector<float> cropped = {overLapOut.begin(), overLapOut.begin() + input.size()};
+        finalOutput += cropped;
+        if (isCloseTo(spread, 0))
+            break;
     }
-    return {output.begin(), output.begin() + input.size()};
+    return finalOutput;
+}
+
+bool ShiftEffect::isCloseTo(float x, float to) {
+    return (abs(to - x) <= 0.03);
 }
 
 void ShiftEffect::mulVectorWith(univector<float>& vec1, const univector<float>& vec2) {

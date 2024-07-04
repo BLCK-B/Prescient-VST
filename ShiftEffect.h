@@ -8,7 +8,7 @@ using namespace kfr;
 class ShiftEffect {
 public:
     ShiftEffect();
-    univector<float> shiftSignal(const univector<float>& input, float shift, bool robot);
+    univector<float> shiftSignal(const univector<float>& input, float shift, float spread);
 
 private:
     static void mulVectorWith(univector<float>& vec1, const univector<float>& vec2);
@@ -17,6 +17,7 @@ private:
     static univector<std::complex<float>> makeComplex(const univector<float>& ofBuffer);
     static univector<std::complex<float>> expComplex(const univector<std::complex<float>>& ofBuffer);
     static univector<float> modulo(const univector<float>& a, float b);
+    bool isCloseTo(float x, float to);
 
     [[nodiscard]] univector<std::complex<float>> padFFT(const univector<float>& input) const;
     [[nodiscard]] static univector<float> cutIFFT(const univector<std::complex<float>>& input) ;

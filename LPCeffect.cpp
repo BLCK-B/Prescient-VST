@@ -48,14 +48,13 @@ void LPCeffect::processing(univector<float>& overwrite, const univector<float>& 
 //    if (chainSettings.preshift) {
 //        result = shiftEffect.shiftSignal(result, chainSettings.shift, chainSettings.robot);
 
-        result = shiftEffect.shiftSignal(result, chainSettings.shift, chainSettings.robot);
-
-        matchPower(result, voice);
 //    }
 //    if (chainSettings.enableLPC) {
-//        result = processLPC(result, carrier);
-//        matchPower(result, voice);
+        result = processLPC(result, carrier);
+        matchPower(result, voice);
 //    }
+    result = shiftEffect.shiftSignal(result, chainSettings.shift, chainSettings.spread);
+    matchPower(result, voice);
 //    if (!chainSettings.preshift) {
 //        result = shiftEffect.shiftSignal(result, chainSettings.shift);
 //        matchPower(result, voice);
