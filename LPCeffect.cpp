@@ -50,8 +50,8 @@ void LPCeffect::processing(univector<float>& overwrite, const univector<float>& 
         matchPower(result, voice);
 //    }
 //    if (chainSettings.enableLPC) {
-        result = processLPC(result, carrier);
-        matchPower(result, voice);
+//        result = processLPC(result, carrier);
+//        matchPower(result, voice);
 //    }
 //    if (!chainSettings.preshift) {
 //        result = shiftEffect.shiftSignal(result, chainSettings.shift);

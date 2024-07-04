@@ -143,7 +143,7 @@ public:
     void shiftSignalTest() {
         const float pi = 2 * acos(0.0);
         univector<float> input = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-        int LEN = 2;
+        int LEN = 10;
         int analysisHop = 4;
         int synthesisHop = 2;
 
@@ -165,8 +165,9 @@ public:
         for (int anCycle = 0; anCycle < endCycle; anCycle += analysisHop) {
             univector<float> grain(input.begin() + anCycle, input.begin() + anCycle + LEN);
             univector<std::complex<float>> fftGrain = padFFT(grain);
+
             // phase information: output psi
-            univector<float> phi = -carg(fftGrain);
+            univector<float> phi = carg(fftGrain);
             univector<float> delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
             psi = modulo(psi + delta * synthesisHop / analysisHop + pi, -2 * pi) + pi;
             previousPhi = phi;
@@ -176,15 +177,16 @@ public:
             std::transform(ramp.begin(), ramp.begin() + LEN, temp.begin(),
                            [&](int r) { return input[anCycle + r - 1] / (LEN * 0.5); });
             univector<float> f1 = absOf(padFFT(temp));
-            univector<std::complex<float>> corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0] / 2));
+
+            univector<std::complex<float>> corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0] / 10));
             mulVectorWith(corrected, expComplex(makeComplex(psi)));
 
             // interpolation
-            grain = real(cutIFFT(corrected)) / 2;
+            grain = real(cutIFFT(corrected)) / 10;
+
             for (int ai = anCycle; ai < anCycle + resampledLEN; ++ai)
                 output[ai] += grain[std::floor(x[ai - anCycle]) - 1];
         }
-
         univector<float> result(output.begin(), output.begin() + input.size());
 
         for (auto &x: result)
@@ -223,16 +225,26 @@ public:
     }
 
     /** FFT and filling the other half with zeroes */
+//    univector<std::complex<float>> padFFT(const univector<float> &input) {
+//        univector<std::complex<float>> buff = realdft(input);
+//        univector<std::complex<float>> result(10, 0.f);
+//        std::copy(buff.begin(), buff.end(), result.begin());
+//        return result;
+//    }
+
     univector<std::complex<float>> padFFT(const univector<float> &input) {
         univector<std::complex<float>> buff = realdft(input);
-        univector<std::complex<float>> result(2, 0.f);
+        univector<std::complex<float>> result(input.size());
         std::copy(buff.begin(), buff.end(), result.begin());
+        // symmetric
+        for (int i = result.size() - 1; i >= buff.size(); --i)
+            result[i] = cconj(result[result.size() - i]);
         return result;
     }
 
     /** cutting the other half (of zeroes) and IFFT */
     univector<float> cutIFFT(const univector<std::complex<float>> &input) {
-        univector<std::complex<float>> buff(2 / 2 + 1, 0.f);
+        univector<std::complex<float>> buff(input.size() / 2 + 1, 0.f);
         std::copy(input.begin(), input.begin() + input.size() / 2 + 1, buff.begin());
         return irealdft(buff);
     }

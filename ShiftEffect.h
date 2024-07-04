@@ -18,12 +18,12 @@ private:
     static univector<std::complex<float>> expComplex(const univector<std::complex<float>>& ofBuffer);
     static univector<float> modulo(const univector<float>& a, float b);
 
-    univector<std::complex<float>> padFFT(const univector<float>& input) const;
-    univector<float> cutIFFT(const univector<std::complex<float>>& input) const;
+    [[nodiscard]] univector<std::complex<float>> padFFT(const univector<float>& input) const;
+    [[nodiscard]] static univector<float> cutIFFT(const univector<std::complex<float>>& input) ;
 
     const float pi = 2 * acos(0.0);
-    const int LEN = 2048;
-    univector<fbase, 2048> hannWindow = window_hann(2048);
+    const int LEN = 1024;
+    univector<fbase, 1024> hannWindow = window_hann(1024);
     const int synthesisHop = 250;
 
     univector<float> psi;
