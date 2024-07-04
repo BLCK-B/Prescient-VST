@@ -24,7 +24,7 @@ private:
     const float pi = 2 * acos(0.0);
     const int LEN = 1024;
     univector<fbase, 1024> hannWindow = window_hann(1024);
-    const int synthesisHop = 250;
+    const int synthesisHop = 350;
 
     univector<float> psi;
     univector<int> ramp;

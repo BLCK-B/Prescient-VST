@@ -47,7 +47,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
     layout.add(std::make_unique<juce::AudioParameterBool>("preshift", "shift pre/post", false));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("shift", "shift",
-           juce::NormalisableRange<float>(0.3f, 4.f, 0.05f, 1.f), 1.f));
+           juce::NormalisableRange<float>(0.3f, 2.f, 0.05f, 1.f), 1.f));
 
     return layout;
 }

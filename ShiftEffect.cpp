@@ -38,20 +38,15 @@ univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float s
         phi = carg(fftGrain);
         delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
         psi = modulo(psi + delta * synthesisHop / analysisHop + pi, -2 * pi) + pi;
-//        psi = modulo(psi + mul(delta, synthesisHop / analysisHop) + pi, -2 * pi) + pi;
         previousPhi = phi;
 
         // shifting: output correction factor
-        univector<float> temp(LEN, 0.f);
-        std::transform(ramp.begin(), ramp.begin() + LEN, temp.begin(),
-                       [&](int r) { return input[anCycle + r - 1] / (LEN * 0.5); });
-        mulVectorWith(temp, hannWindow);
-        f1 = absOf(padFFT(temp));
-        corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0] / 10));
+        f1 = absOf(padFFT(mul(input[anCycle], hannWindow)) / LEN);
+        corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0] ));
         mulVectorWith(corrected, expComplex(makeComplex(psi)));
 
         // interpolation
-        grain = real(cutIFFT(corrected)) / 10;
+        grain = real(cutIFFT(corrected)) ;
         mulVectorWith(grain, hannWindow);
         for (int ai = anCycle; ai < anCycle + resampledLEN; ++ai)
             output[ai] += grain[std::floor(x[ai - anCycle]) - 1];
@@ -104,9 +99,6 @@ univector<std::complex<float>> ShiftEffect::padFFT(const univector<float>& input
     univector<std::complex<float>> buff = realdft(input);
     univector<std::complex<float>> result(LEN, 0.f);
     std::copy(buff.begin(), buff.end(), result.begin());
-    // symmetric
-    for (int i = result.size() - 1; i >= buff.size(); --i)
-        result[i] = cconj(result[result.size() - i]);
     return result;
 }
 
