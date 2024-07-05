@@ -8,7 +8,7 @@ using namespace kfr;
 class ShiftEffect {
 public:
     ShiftEffect();
-    univector<float> shiftSignal(const univector<float>& input, float shift, float spread);
+    univector<float> shiftSignal(const univector<float>& input, float shift, float spread, float custom);
 
 private:
     static void mulVectorWith(univector<float>& vec1, const univector<float>& vec2);
@@ -36,5 +36,4 @@ private:
     univector<float> delta;
     univector<float> f1;
     univector<std::complex<float>> corrected;
-
 };

@@ -10,7 +10,7 @@
 using namespace kfr;
 
 struct ChainSettings {
-    float modelorder{70}, flangerBase {0}, passthrough {0}, shift {1}, spread {0};
+    float modelorder{70}, flangerBase {0}, passthrough {0}, shift {1}, spread {0}, custom {0};
     bool enableLPC {true}, preshift {true};
 };
 

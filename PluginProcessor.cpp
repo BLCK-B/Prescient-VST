@@ -16,6 +16,7 @@ MyAudioProcessor::MyAudioProcessor()
     treeState.addParameterListener("preshift", this);
     treeState.addParameterListener("shift", this);
     treeState.addParameterListener("spread", this);
+    treeState.addParameterListener("custom", this);
 }
 
 MyAudioProcessor::~MyAudioProcessor()
@@ -30,6 +31,7 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.enableLPC = treeState.getRawParameterValue("enableLPC")->load();
     settings.preshift = treeState.getRawParameterValue("preshift")->load();
     settings.spread = treeState.getRawParameterValue("spread")->load();
+    settings.custom = treeState.getRawParameterValue("custom")->load();
     return settings;
 }
 
@@ -52,7 +54,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
            juce::NormalisableRange<float>(0.55f, 2.f, 0.01f, 1.f), 1.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("spread", "spread",
-            juce::NormalisableRange<float>(0.f, 0.5f, 0.01f, 1.f), 0.f));
+           juce::NormalisableRange<float>(0.f, 0.5f, 0.01f, 1.f), 0.f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("custom", "custom",
+           juce::NormalisableRange<float>(0.f, 1.f, 0.01f, 1.f), 0.f));
 
     return layout;
 }

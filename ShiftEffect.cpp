@@ -14,12 +14,18 @@ ShiftEffect::ShiftEffect():
     jassert(LEN % 2 == 0);
 }
 
-univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float shift, float spread) {
+univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float shift, float spread, float custom) {
     if (isCloseTo(shift, 1) && isCloseTo(spread, 0))
         return input;
     univector<float> finalOutput(input.size(), 0.f);
     for (int unison = 0; unison <= 4; ++unison) {
-//        TODO: stereo separation
+        if (isCloseTo(spread, 0) && unison != 0)
+            continue;
+        if (custom < 0.25 && unison != 0)
+            break;
+        else if (custom < 0.5 && unison > 2)
+            break;
+
         float newShift = shift;
         if (unison == 1)
             newShift += spread;
@@ -54,12 +60,10 @@ univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float s
             fftGrain = padFFT(grain);
 
             // phase information: output psi
-            if (unison == 0) {
-                phi = carg(fftGrain);
-                delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
-                psi = modulo(psi + delta * synthesisHop / analysisHop + pi, -2 * pi) + pi;
-                previousPhi = phi;
-            }
+            phi = carg(fftGrain);
+            delta = modulo(phi - previousPhi - omega + pi, -2 * pi) + omega + pi;
+            psi = modulo(psi + delta * synthesisHop / analysisHop + pi, -2 * pi) + pi;
+            previousPhi = phi;
             if (unison == 0 && isCloseTo(shift, 1)) {
                 overLapOut = grain;
                 break;
@@ -76,6 +80,12 @@ univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float s
                 overLapOut[ai] += grain[std::floor(x[ai - anCycle]) - 1];
         }
         univector<float> cropped = {overLapOut.begin(), overLapOut.begin() + input.size()};
+
+        if (unison == 1 || unison == 2)
+            cropped *= 0.5;
+        if (unison == 3 || unison == 4)
+            cropped *= 0.25;
+
         finalOutput += cropped;
         if (isCloseTo(spread, 0))
             break;
