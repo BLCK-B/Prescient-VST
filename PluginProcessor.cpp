@@ -15,8 +15,8 @@ MyAudioProcessor::MyAudioProcessor()
     treeState.addParameterListener("enableLPC", this);
     treeState.addParameterListener("preshift", this);
     treeState.addParameterListener("shift", this);
-    treeState.addParameterListener("spread", this);
-    treeState.addParameterListener("custom", this);
+    treeState.addParameterListener("voice2", this);
+    treeState.addParameterListener("voice3", this);
 }
 
 MyAudioProcessor::~MyAudioProcessor()
@@ -30,8 +30,8 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.shift = treeState.getRawParameterValue("shift")->load();
     settings.enableLPC = treeState.getRawParameterValue("enableLPC")->load();
     settings.preshift = treeState.getRawParameterValue("preshift")->load();
-    settings.spread = treeState.getRawParameterValue("spread")->load();
-    settings.custom = treeState.getRawParameterValue("custom")->load();
+    settings.voice2 = treeState.getRawParameterValue("voice2")->load();
+    settings.voice3 = treeState.getRawParameterValue("voice3")->load();
     return settings;
 }
 
@@ -53,11 +53,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
     layout.add(std::make_unique<juce::AudioParameterFloat>("shift", "shift",
            juce::NormalisableRange<float>(0.55f, 2.f, 0.01f, 1.f), 1.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("spread", "spread",
-           juce::NormalisableRange<float>(0.f, 0.5f, 0.01f, 1.f), 0.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("voice2", "voice2",
+            juce::NormalisableRange<float>(0.55f, 2.f, 0.01f, 1.f), 1.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("custom", "custom",
-           juce::NormalisableRange<float>(0.f, 1.f, 0.01f, 1.f), 0.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("voice3", "voice3",
+            juce::NormalisableRange<float>(0.55f, 2.f, 0.01f, 1.f), 1.f));
 
     return layout;
 }
@@ -113,7 +113,8 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     chainSettings.modelorder = 70;
     chainSettings.shift = 1.f;
-    chainSettings.spread = 0;
+    chainSettings.voice2 = 1.f;
+    chainSettings.voice3 = 1.f;
     chainSettings.enableLPC = true;
     chainSettings.preshift = true;
     setLatencySamples(lpcEffect[0].getLatency());
@@ -123,10 +124,6 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.numChannels = 2;
     spec.sampleRate = sampleRate;
 
-    flangerLFO.initialise([](float x) { return std::sin(x); }, 256);
-    flangerDelayLine.reset();
-    flangerDelayLine.prepare(spec);
-    flangerDelayLine.setMaximumDelayInSamples(samplesPerBlock * 5);
     LPCtests lpCtests;
 
 //    lpCtests.levinsonDurbinTest();
@@ -182,8 +179,8 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
 //        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
 
-        channelL[sample] = sampleL;
-        channelR[sample] = sampleR;
+        channelL[sample] = sampleL + 0.15 * sampleR;
+        channelR[sample] = sampleR + 0.15 * sampleL;
     }
 }
 

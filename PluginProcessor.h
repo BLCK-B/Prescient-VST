@@ -61,9 +61,6 @@ private:
         chain.template setBypassed<Index>(false);
     }
 
-    juce::dsp::Oscillator<float> flangerLFO;
-    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> flangerDelayLine;
-
     ChainSettings chainSettings;
 
     LPCeffect lpcEffect[2];
