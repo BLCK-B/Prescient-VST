@@ -15,7 +15,7 @@ ShiftEffect::ShiftEffect():
 }
 
 univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float shift) {
-    if (shift < 1.03 && shift > 0.97)
+    if (shift < 1.02 && shift > 0.98)
         return input;
     univector<float> finalOutput(input.size(), 0.f);
     int analysisHop = static_cast<int>(synthesisHop / shift);

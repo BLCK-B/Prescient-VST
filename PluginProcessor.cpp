@@ -44,7 +44,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
            juce::NormalisableRange<float>(5.f, 125.f, 5.f, 1.f), 70.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("passthrough", "passthrough",
-           juce::NormalisableRange<float>(0.f, 0.5f, 0.1f, 1.f), 0.f));
+           juce::NormalisableRange<float>(0.f, 2.f, 0.1f, 1.f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterBool>("enableLPC", "enableLPC", false));
 
@@ -124,7 +124,7 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.numChannels = 2;
     spec.sampleRate = sampleRate;
 
-    LPCtests lpCtests;
+//    LPCtests lpCtests;
 
 //    lpCtests.levinsonDurbinTest();
 //    lpCtests.IIRfilterTest();

@@ -45,11 +45,29 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, const ChainS
 
 void LPCeffect::processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings) {
 
-    univector<float> result = shiftEffect.shiftSignal(voice, chainSettings.shift);
-    result += shiftEffect.shiftSignal(voice, chainSettings.voice2);
-    result += shiftEffect.shiftSignal(voice, chainSettings.voice3);
-    matchPower(result, voice);
+    univector<float> result = voice;
 
+    if (chainSettings.enableLPC) {
+        if (chainSettings.shift > 1.02 || chainSettings.shift < 0.98) {
+            result += shiftEffect.shiftSignal(result, chainSettings.shift);
+            matchPower(result, voice);
+        }
+        result = processLPC(result, carrier);
+        matchPower(result, voice);
+    }
+
+    if (chainSettings.voice2 > 1.02 || chainSettings.voice2 < 0.98) {
+        univector<float> temp = shiftEffect.shiftSignal(voice, chainSettings.voice2);
+        matchPower(temp, voice);
+        result += temp * 0.5;
+    }
+    if (chainSettings.voice3 > 1.02  || chainSettings.voice3 < 0.98) {
+        univector<float> temp = shiftEffect.shiftSignal(voice, chainSettings.voice3);
+        matchPower(temp, voice);
+        result += temp * 0.5;
+    }
+
+    matchPower(result, voice);
     if (chainSettings.passthrough > 0.05) {
         result += mul(voice, chainSettings.passthrough);
         matchPower(result, voice);
