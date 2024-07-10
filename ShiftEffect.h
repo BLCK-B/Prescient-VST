@@ -3,6 +3,7 @@
 
 #endif //AUDIO_PLUGIN_EXAMPLE_SHIFTEFFECT_H
 
+
 using namespace kfr;
 
 class ShiftEffect {

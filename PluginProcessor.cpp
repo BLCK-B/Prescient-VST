@@ -2,6 +2,7 @@
 #include "PluginEditor.h"
 #include "LPCeffect.cpp"
 #include "LPCtests.cpp"
+
 //==============================================================================
 MyAudioProcessor::MyAudioProcessor()
     : AudioProcessor (BusesProperties()
@@ -17,6 +18,7 @@ MyAudioProcessor::MyAudioProcessor()
     treeState.addParameterListener("shift", this);
     treeState.addParameterListener("voice2", this);
     treeState.addParameterListener("voice3", this);
+    treeState.addParameterListener("stereowidth", this);
 }
 
 MyAudioProcessor::~MyAudioProcessor()
@@ -32,6 +34,7 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.preshift = treeState.getRawParameterValue("preshift")->load();
     settings.voice2 = treeState.getRawParameterValue("voice2")->load();
     settings.voice3 = treeState.getRawParameterValue("voice3")->load();
+    settings.stereowidth = treeState.getRawParameterValue("stereowidth")->load();
     return settings;
 }
 
@@ -58,6 +61,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("voice3", "voice3",
             juce::NormalisableRange<float>(0.55f, 2.f, 0.01f, 1.f), 1.f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("stereowidth", "stereowidth",
+           juce::NormalisableRange<float>(0.f, 2.f, 0.05f, 1.f), 1.f));
 
     return layout;
 }
@@ -179,8 +185,18 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
 //        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
 
-        channelL[sample] = sampleL + 0.15 * sampleR;
-        channelR[sample] = sampleR + 0.15 * sampleL;
+        float side = 0.5 * (sampleL - sampleR);
+        float mid = 0.5 * (sampleL + sampleR);
+        float width = chainSettings.stereowidth;
+        float sideNew = width * side;
+        float midNew = (2 - width) * mid;
+        sampleL = midNew + sideNew;
+        sampleR = midNew - sideNew;
+
+        channelL[sample] = sampleL;
+        channelR[sample] = sampleR;
+//        channelL[sample] = sampleL + 0.15 * sampleR;
+//        channelR[sample] = sampleR + 0.15 * sampleL;
     }
 }
 
