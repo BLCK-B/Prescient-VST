@@ -12,7 +12,8 @@ LPCeffect::LPCeffect() :
         sideChainBuffer1(windowSize),
         sideChainBuffer2(windowSize),
         filteredBuffer1(windowSize, 0.f),
-        filteredBuffer2(windowSize, 0.f)
+        filteredBuffer2(windowSize, 0.f),
+        randValues(32, 0.f)
 {
     jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
 }
@@ -44,28 +45,50 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, const ChainS
 }
 
 void LPCeffect::processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings) {
-    univector<float> result = voice;
+    univector<float> primaryVoice = voice;
+    univector<float> secondVoice(windowSize, 0.f);
+    univector<float> thirdVoice(windowSize, 0.f);
 
-    if (chainSettings.shift > 1.02 || chainSettings.shift < 0.98)
-        result = shiftEffect.shiftSignal(result, chainSettings.shift);
-    if (chainSettings.voice2 > 1.02 || chainSettings.voice2 < 0.98)
-        result += shiftEffect.shiftSignal(voice, chainSettings.voice2);
-    if (chainSettings.voice3 > 1.02  || chainSettings.voice3 < 0.98)
-        result += shiftEffect.shiftSignal(voice, chainSettings.voice3);
+    if (chainSettings.shift > 1.02 || chainSettings.shift < 0.98) {
+        primaryVoice = FFToperations(FFToperation::Convolution, primaryVoice, randValues);
+        normalise(primaryVoice);
+        primaryVoice = shiftEffect.shiftSignal(primaryVoice, chainSettings.shift);
+        normalise(primaryVoice);
+    }
+    if (chainSettings.voice2 > 1.02 || chainSettings.voice2 < 0.98) {
+        secondVoice = FFToperations(FFToperation::Convolution, voice, randValues);
+        normalise(secondVoice);
+        secondVoice = shiftEffect.shiftSignal(secondVoice, chainSettings.voice2);
+        normalise(secondVoice);
+    }
+    if (chainSettings.voice3 > 1.02  || chainSettings.voice3 < 0.98) {
+        thirdVoice = FFToperations(FFToperation::Convolution, voice, randValues);
+        normalise(thirdVoice);
+        thirdVoice = shiftEffect.shiftSignal(thirdVoice, chainSettings.voice3);
+        normalise(thirdVoice);
+    }
+    univector<float> result = primaryVoice + secondVoice + thirdVoice;
+    normalise(result);
 
-    matchPower(result, voice);
+//    matchPower(result, voice);
 
     if (chainSettings.enableLPC) {
         result = processLPC(result, carrier);
-        matchPower(result, voice);
+        normalise(result);
+//        matchPower(result, voice);
     }
 
     if (chainSettings.passthrough > 0.05) {
         result += mul(voice, chainSettings.passthrough);
-        matchPower(result, voice);
+        normalise(result);
+//        matchPower(result, voice);
     }
 
     std::memcpy(overwrite.data(), result.data(), result.size() * sizeof(float));
+}
+
+void LPCeffect::sendRands(univector<float> rands) {
+    randValues = rands;
 }
 
 univector<float> LPCeffect::processLPC(const univector<float>& voice, const univector<float>& carrier) {
@@ -77,7 +100,7 @@ univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>
     univector<float> paddedCoeff(windowSize);
     std::copy(coefficients.begin(), coefficients.end(), paddedCoeff.begin());
 
-    univector<std::complex<float>> fftInp = o == FFToperation::Convolution ? FFTcache : realdft(inputBuffer);
+    univector<std::complex<float>> fftInp = realdft(inputBuffer);
     univector<std::complex<float>> fftCoeff = realdft(paddedCoeff);
     switch (o) {
         case FFToperation::Convolution:
@@ -142,6 +165,11 @@ univector<float> LPCeffect::levinsonDurbin(const univector<float>& corrCoeff) co
         LPCcoeffs.push_back(a[frameModelOrder][frameModelOrder - x]);
 
     return LPCcoeffs;
+}
+
+
+void LPCeffect::normalise(univector<float>& input) {
+    input /= absmaxof(input);
 }
 
 void LPCeffect::matchPower(univector<float>& input, const univector<float>& reference) const {

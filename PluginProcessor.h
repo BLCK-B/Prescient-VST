@@ -61,6 +61,8 @@ private:
         chain.template setBypassed<Index>(false);
     }
 
+    int sampleCount = 0;
+
     ChainSettings chainSettings;
 
     LPCeffect lpcEffect[2];

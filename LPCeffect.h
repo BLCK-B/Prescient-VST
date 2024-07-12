@@ -21,6 +21,7 @@ public:
         return windowSize;
     }
     float sendSample(float carrierSample, float voiceSample, const ChainSettings& chainSettings);
+    void sendRands(univector<float> rands);
 
 private:
     enum class FFToperation {
@@ -29,11 +30,15 @@ private:
 
     univector<float> processLPC(const univector<float>& voice, const univector<float>& carrier);
     void processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings);
+
+    univector<float> FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients);
     univector<float> autocorrelation(const univector<float>& fromBufer, bool saveFFT);
     [[nodiscard]] univector<float> levinsonDurbin(const univector<float>& ofBuffer) const;
     univector<float> getResiduals(const univector<float>& ofBuffer);
+
+    static void normalise(univector<float>& input);
     void matchPower(univector<float>& input, const univector<float>& reference) const;
-    univector<float> FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients);
+
     static void mulVectorWith(univector<float>& vec1, const univector<float>& vec2);
     static void mulVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2);
     static void divVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2);
@@ -61,6 +66,8 @@ private:
     univector<float> filteredBuffer2;
 
     univector<std::complex<float>> FFTcache;
+
+    univector<float> randValues;
 
     ShiftEffect shiftEffect;
 };

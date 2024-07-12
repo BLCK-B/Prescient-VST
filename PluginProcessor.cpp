@@ -180,6 +180,22 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 //        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 //        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
+//        lpcEffect[0].sendRands({0.3724, 0.1478, 0.2923, -0.1537, 0.2440});
+//        lpcEffect[1].sendRands({0.1306, -0.0509, 0.2920, -0.3429, 0.4543});
+        ++sampleCount;
+        if (sampleCount > 30000 && chainSettings.preshift) {
+            sampleCount = 0;
+            univector<float> randValues1(32, 0.f);
+            univector<float> randValues2(32, 0.f);
+            for (float &a : randValues1) {
+                float rnd = (float) rand();
+                a = rnd / RAND_MAX - 0.5;
+            }
+            randValues2 = randValues1 - 0.01;
+            lpcEffect[0].sendRands(randValues1);
+            lpcEffect[1].sendRands(randValues2);
+        }
+
         sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, chainSettings);
         sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, chainSettings);
 
