@@ -15,8 +15,6 @@ ShiftEffect::ShiftEffect():
 }
 
 univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float shift) {
-    if (shift < 1.02 && shift > 0.98)
-        return input;
     univector<float> finalOutput(input.size(), 0.f);
     int analysisHop = static_cast<int>(synthesisHop / shift);
     const int resampledLEN = std::floor(LEN * analysisHop / synthesisHop);

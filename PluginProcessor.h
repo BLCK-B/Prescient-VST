@@ -62,6 +62,9 @@ private:
     }
 
     int sampleCount = 0;
+    univector<float> randValues1;
+    univector<float> randValues2;
+    univector<float> randValues3;
 
     ChainSettings chainSettings;
 

@@ -21,7 +21,7 @@ public:
         return windowSize;
     }
     float sendSample(float carrierSample, float voiceSample, const ChainSettings& chainSettings);
-    void sendRands(univector<float> rands);
+    void sendRands(univector<float> rands1, univector<float> rands2, univector<float> rands3);
 
 private:
     enum class FFToperation {
@@ -67,7 +67,9 @@ private:
 
     univector<std::complex<float>> FFTcache;
 
-    univector<float> randValues;
+    univector<float> randValues1;
+    univector<float> randValues2;
+    univector<float> randValues3;
 
     ShiftEffect shiftEffect;
 };

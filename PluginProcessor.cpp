@@ -4,8 +4,11 @@
 #include "LPCtests.cpp"
 
 //==============================================================================
-MyAudioProcessor::MyAudioProcessor()
-    : AudioProcessor (BusesProperties()
+MyAudioProcessor::MyAudioProcessor() :
+    randValues1(32, 0.f),
+    randValues2(32, 0.f),
+    randValues3(32, 0.f),
+    AudioProcessor (BusesProperties()
         .withInput("Input",  juce::AudioChannelSet::stereo(), true)
         .withInput("Sidechain",  juce::AudioChannelSet::stereo(), true)
         .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
@@ -182,18 +185,39 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
 //        lpcEffect[0].sendRands({0.3724, 0.1478, 0.2923, -0.1537, 0.2440});
 //        lpcEffect[1].sendRands({0.1306, -0.0509, 0.2920, -0.3429, 0.4543});
+
+        float side = 0.5 * (sampleSideChainL - sampleSideChainR);
+        float mid = 0.5 * (sampleSideChainL + sampleSideChainR);
+        float width = chainSettings.stereowidth;
+        float sideNew = width * side;
+        float midNew = (2 - width) * mid;
+        sampleSideChainL = midNew + sideNew;
+        sampleSideChainR = midNew - sideNew;
+
+
         ++sampleCount;
-        if (sampleCount > 30000 && chainSettings.preshift) {
+        if (sampleCount > 2048) {
             sampleCount = 0;
-            univector<float> randValues1(32, 0.f);
-            univector<float> randValues2(32, 0.f);
             for (float &a : randValues1) {
                 float rnd = (float) rand();
-                a = rnd / RAND_MAX - 0.5;
+                a += 0.2 * (rnd / RAND_MAX - 0.5);
             }
-            randValues2 = randValues1 - 0.01;
-            lpcEffect[0].sendRands(randValues1);
-            lpcEffect[1].sendRands(randValues2);
+            randValues1 /= absmaxof(randValues1);
+            for (float &a : randValues2) {
+                float rnd = (float) rand();
+                a += 0.2 * (rnd / RAND_MAX - 0.5);
+            }
+            randValues2 /= absmaxof(randValues1);
+            for (float &a : randValues3) {
+                float rnd = (float) rand();
+                a += 0.2 * (rnd / RAND_MAX - 0.5);
+            }
+            randValues3 /= absmaxof(randValues1);
+            lpcEffect[0].sendRands(randValues1, randValues2, randValues3);
+            if (chainSettings.preshift)
+                lpcEffect[1].sendRands(randValues1, randValues2 - 0.01, randValues3 + 0.02);
+            else
+                lpcEffect[1].sendRands(randValues1 - 0.01, randValues2 - 0.01, randValues3 + 0.02);
         }
 
         sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, chainSettings);
@@ -201,18 +225,8 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
 //        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
 
-        float side = 0.5 * (sampleL - sampleR);
-        float mid = 0.5 * (sampleL + sampleR);
-        float width = chainSettings.stereowidth;
-        float sideNew = width * side;
-        float midNew = (2 - width) * mid;
-        sampleL = midNew + sideNew;
-        sampleR = midNew - sideNew;
-
         channelL[sample] = sampleL;
         channelR[sample] = sampleR;
-//        channelL[sample] = sampleL + 0.15 * sampleR;
-//        channelR[sample] = sampleR + 0.15 * sampleL;
     }
 }
 
