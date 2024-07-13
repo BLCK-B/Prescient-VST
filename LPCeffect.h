@@ -10,8 +10,8 @@
 using namespace kfr;
 
 struct ChainSettings {
-    float modelorder{70}, flangerBase {0}, passthrough {0}, shift {1}, voice2 {1}, voice3 {1}, stereowidth {1};
-    bool enableLPC {true}, preshift {true};
+    float modelorder{70}, flangerBase {0}, passthrough {0}, shift {1}, voice2 {1}, voice3 {1}, monostereo {1};
+    bool enableLPC {false};
 };
 
 class LPCeffect {
@@ -64,12 +64,6 @@ private:
     univector<float> sideChainBuffer2;
     univector<float> filteredBuffer1;
     univector<float> filteredBuffer2;
-
-    univector<std::complex<float>> FFTcache;
-
-    univector<float> randValues1;
-    univector<float> randValues2;
-    univector<float> randValues3;
 
     ShiftEffect shiftEffect;
 };

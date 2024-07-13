@@ -17,11 +17,10 @@ MyAudioProcessor::MyAudioProcessor() :
     treeState.addParameterListener("model order", this);
     treeState.addParameterListener("passthrough", this);
     treeState.addParameterListener("enableLPC", this);
-    treeState.addParameterListener("preshift", this);
     treeState.addParameterListener("shift", this);
     treeState.addParameterListener("voice2", this);
     treeState.addParameterListener("voice3", this);
-    treeState.addParameterListener("stereowidth", this);
+    treeState.addParameterListener("monostereo", this);
 }
 
 MyAudioProcessor::~MyAudioProcessor()
@@ -34,10 +33,9 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.passthrough = treeState.getRawParameterValue("passthrough")->load();
     settings.shift = treeState.getRawParameterValue("shift")->load();
     settings.enableLPC = treeState.getRawParameterValue("enableLPC")->load();
-    settings.preshift = treeState.getRawParameterValue("preshift")->load();
     settings.voice2 = treeState.getRawParameterValue("voice2")->load();
     settings.voice3 = treeState.getRawParameterValue("voice3")->load();
-    settings.stereowidth = treeState.getRawParameterValue("stereowidth")->load();
+    settings.monostereo = treeState.getRawParameterValue("monostereo")->load();
     return settings;
 }
 
@@ -54,8 +52,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
 
     layout.add(std::make_unique<juce::AudioParameterBool>("enableLPC", "enableLPC", false));
 
-    layout.add(std::make_unique<juce::AudioParameterBool>("preshift", "shift pre/post", false));
-
     layout.add(std::make_unique<juce::AudioParameterFloat>("shift", "shift",
            juce::NormalisableRange<float>(0.55f, 2.f, 0.01f, 1.f), 1.f));
 
@@ -65,8 +61,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
     layout.add(std::make_unique<juce::AudioParameterFloat>("voice3", "voice3",
             juce::NormalisableRange<float>(0.55f, 2.f, 0.01f, 1.f), 1.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("stereowidth", "stereowidth",
-           juce::NormalisableRange<float>(0.f, 2.f, 0.05f, 1.f), 1.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("monostereo", "monostereo",
+           juce::NormalisableRange<float>(0.f, 1.f, 0.01f, 1.f), 1.f));
 
     return layout;
 }
@@ -124,8 +120,8 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     chainSettings.shift = 1.f;
     chainSettings.voice2 = 1.f;
     chainSettings.voice3 = 1.f;
-    chainSettings.enableLPC = true;
-    chainSettings.preshift = true;
+    chainSettings.enableLPC = false;
+    chainSettings.monostereo = 1.f;
     setLatencySamples(lpcEffect[0].getLatency());
     juce::ignoreUnused (sampleRate, samplesPerBlock);
     juce::dsp::ProcessSpec spec{};
@@ -181,7 +177,6 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         // LPC
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
 //        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
-//        std::cout<<"orig: "<< std::fixed << setprecision(5) <<sampleL;
 
 //        lpcEffect[0].sendRands({0.3724, 0.1478, 0.2923, -0.1537, 0.2440});
 //        lpcEffect[1].sendRands({0.1306, -0.0509, 0.2920, -0.3429, 0.4543});
@@ -223,7 +218,11 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, chainSettings);
         sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, chainSettings);
 
-//        std::cout<<" out: "<< std::fixed << setprecision(5) << sampleL<<"\n";
+        float width = chainSettings.monostereo;
+        float sideNew = width * 0.5 * (sampleL - sampleR);
+        float midNew = (2 - width) * 0.5 * (sampleL + sampleR);
+        sampleL = (midNew + sideNew) / 2 - chainSettings.monostereo;
+        sampleR = (midNew - sideNew) / 2 - chainSettings.monostereo;
 
         channelL[sample] = sampleL;
         channelR[sample] = sampleR;

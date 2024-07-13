@@ -1,6 +1,5 @@
 #include "LPCeffect.h"
 #include <kfr/base.hpp>
-#include <kfr/dsp.hpp>
 #include <kfr/dft.hpp>
 using namespace kfr;
 using namespace std::chrono;
@@ -51,44 +50,23 @@ void LPCeffect::processing(univector<float>& overwrite, const univector<float>& 
     univector<float> secondVoice(windowSize, 0.f);
     univector<float> thirdVoice(windowSize, 0.f);
 
-    if (chainSettings.shift > 1.01 || chainSettings.shift < 0.99) {
-        primaryVoice = FFToperations(FFToperation::Convolution, primaryVoice, randValues1);
-        normalise(primaryVoice);
-        mulVectorWith(primaryVoice, hannWindow);
-//        primaryVoice = shiftEffect.shiftSignal(primaryVoice, chainSettings.shift);
-//        normalise(primaryVoice);
-    }
-    if (chainSettings.voice2 > 1.01 || chainSettings.voice2 < 0.99) {
-        secondVoice = FFToperations(FFToperation::Convolution, voice, randValues2);
-        normalise(secondVoice);
-        mulVectorWith(secondVoice, hannWindow);
-        secondVoice = mul(secondVoice, 0.3);
-//        secondVoice = shiftEffect.shiftSignal(secondVoice, chainSettings.voice2);
-//        normalise(secondVoice);
-    }
-    if (chainSettings.voice3 > 1.01  || chainSettings.voice3 < 0.99) {
-        thirdVoice = FFToperations(FFToperation::Convolution, voice, randValues3);
-        normalise(thirdVoice);
-        mulVectorWith(thirdVoice, hannWindow);
-        thirdVoice = mul(thirdVoice, 0.3);
-//        thirdVoice = shiftEffect.shiftSignal(thirdVoice, chainSettings.voice3);
-//        normalise(thirdVoice);
-    }
-    univector<float> result = primaryVoice + secondVoice + thirdVoice;
-    normalise(result);
+    if (chainSettings.shift > 1.01 || chainSettings.shift < 0.99)
+        result = shiftEffect.shiftSignal(result, chainSettings.shift);
+    if (chainSettings.voice2 > 1.01 || chainSettings.voice2 < 0.99)
+        result += shiftEffect.shiftSignal(voice, chainSettings.voice2);
+    if (chainSettings.voice3 > 1.01 || chainSettings.voice3 < 0.99)
+        result += shiftEffect.shiftSignal(voice, chainSettings.voice3);
 
-//    matchPower(result, voice);
+   matchPower(result, voice);
 
     if (chainSettings.enableLPC) {
         result = processLPC(result, carrier);
-        normalise(result);
-//        matchPower(result, voice);
+       matchPower(result, voice);
     }
 
     if (chainSettings.passthrough > 0.05) {
         result += mul(voice, chainSettings.passthrough);
-        normalise(result);
-//        matchPower(result, voice);
+       matchPower(result, voice);
     }
 
     std::memcpy(overwrite.data(), result.data(), result.size() * sizeof(float));
@@ -132,8 +110,6 @@ univector<float> LPCeffect::getResiduals(const univector<float>& ofBuffer) {
 univector<float> LPCeffect::autocorrelation(const univector<float>& ofBuffer, bool saveFFT) {
     // Wiener–Khinchin theorem
     univector<std::complex<float>> fftBuffer = realdft(ofBuffer);
-    if (saveFFT)
-        FFTcache = fftBuffer;
     univector<std::complex<float>> fftBufferConj = cconj(fftBuffer);
     mulVectorWith(fftBuffer, fftBufferConj);
     univector<float> coeffs = irealdft(fftBuffer);
@@ -203,14 +179,6 @@ void LPCeffect::mulVectorWith(univector<std::complex<float>>& vec1, const univec
 void LPCeffect::divVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2) {
     std::transform(vec1.begin(), vec1.end(), vec2.begin(), vec1.begin(), std::divides<>());
 }
-
-//     white noise
-//    univector<float> newE(windowSize);
-//    for (int n = 0; n < windowSize; ++n) {
-//        float rnd = (float) (rand() % 1000);
-//        rnd /= 100000000 * 0.5;
-//        newE[n] = rnd;
-//    }
 
 //auto start_time = std::chrono::high_resolution_clock::now();
 //auto end = std::chrono::high_resolution_clock::now();
