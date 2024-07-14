@@ -11,10 +11,7 @@ LPCeffect::LPCeffect() :
         sideChainBuffer1(windowSize),
         sideChainBuffer2(windowSize),
         filteredBuffer1(windowSize, 0.f),
-        filteredBuffer2(windowSize, 0.f),
-        randValues1(32, 0.f),
-        randValues2(32, 0.f),
-        randValues3(32, 0.f)
+        filteredBuffer2(windowSize, 0.f)
 {
     jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
 }
@@ -46,36 +43,35 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, const ChainS
 }
 
 void LPCeffect::processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings) {
-    univector<float> primaryVoice = voice;
-    univector<float> secondVoice(windowSize, 0.f);
-    univector<float> thirdVoice(windowSize, 0.f);
+    univector<float> result = voice;
 
-    if (chainSettings.shift > 1.01 || chainSettings.shift < 0.99)
+    if (chainSettings.shift > 1.01 || chainSettings.shift < 0.99) {
         result = shiftEffect.shiftSignal(result, chainSettings.shift);
-    if (chainSettings.voice2 > 1.01 || chainSettings.voice2 < 0.99)
-        result += shiftEffect.shiftSignal(voice, chainSettings.voice2);
-    if (chainSettings.voice3 > 1.01 || chainSettings.voice3 < 0.99)
-        result += shiftEffect.shiftSignal(voice, chainSettings.voice3);
-
-   matchPower(result, voice);
+        matchPower(result, voice);
+    }
+    if (chainSettings.voice2 > 1.01 || chainSettings.voice2 < 0.99) {
+        univector<float> temp = shiftEffect.shiftSignal(voice, chainSettings.voice2);
+        matchPower(temp, voice);
+        result += temp;
+    }
+    if (chainSettings.voice3 > 1.01 || chainSettings.voice3 < 0.99) {
+        univector<float> temp = shiftEffect.shiftSignal(voice, chainSettings.voice3);
+        matchPower(temp, voice);
+        result += temp;
+    }
+    matchPower(result, voice);
 
     if (chainSettings.enableLPC) {
         result = processLPC(result, carrier);
-       matchPower(result, voice);
+        matchPower(result, voice);
     }
 
     if (chainSettings.passthrough > 0.05) {
         result += mul(voice, chainSettings.passthrough);
-       matchPower(result, voice);
+        matchPower(result, voice);
     }
 
     std::memcpy(overwrite.data(), result.data(), result.size() * sizeof(float));
-}
-
-void LPCeffect::sendRands(univector<float> rands1, univector<float> rands2, univector<float> rands3) {
-    randValues1 = rands1;
-    randValues2 = rands2;
-    randValues3 = rands3;
 }
 
 univector<float> LPCeffect::processLPC(const univector<float>& voice, const univector<float>& carrier) {

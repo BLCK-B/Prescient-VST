@@ -10,7 +10,7 @@
 using namespace kfr;
 
 struct ChainSettings {
-    float modelorder{70}, flangerBase {0}, passthrough {0}, shift {1}, voice2 {1}, voice3 {1}, monostereo {1};
+    float modelorder{70}, passthrough {0}, shift {1}, voice2 {1}, voice3 {1}, monostereo {1};
     bool enableLPC {false};
 };
 
@@ -21,7 +21,6 @@ public:
         return windowSize;
     }
     float sendSample(float carrierSample, float voiceSample, const ChainSettings& chainSettings);
-    void sendRands(univector<float> rands1, univector<float> rands2, univector<float> rands3);
 
 private:
     enum class FFToperation {

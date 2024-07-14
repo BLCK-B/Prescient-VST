@@ -61,11 +61,6 @@ private:
         chain.template setBypassed<Index>(false);
     }
 
-    int sampleCount = 0;
-    univector<float> randValues1;
-    univector<float> randValues2;
-    univector<float> randValues3;
-
     ChainSettings chainSettings;
 
     LPCeffect lpcEffect[2];
