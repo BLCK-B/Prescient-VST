@@ -8,7 +8,7 @@ using namespace kfr;
 
 class ShiftEffect {
 public:
-    ShiftEffect();
+    explicit ShiftEffect(const int sampleRate);
     univector<float> shiftSignal(const univector<float>& input, float shift);
 
 private:
@@ -23,9 +23,16 @@ private:
     [[nodiscard]] static univector<float> cutIFFT(const univector<std::complex<float>>& input) ;
 
     const float pi = 2 * acos(0.0);
-    const int LEN = 1024;
-    univector<fbase, 1024> hannWindow = window_hann(1024);
-    const int synthesisHop = 250;
+    int LEN = 0;
+    univector<fbase, 512> hannWindowS = window_hann(512);
+    univector<fbase, 1024> hannWindowM = window_hann(1024);
+    univector<fbase, 2048> hannWindowL = window_hann(2048);
+    int synthesisHop = 0;
+
+    enum class WindowLenEnum {
+        S, M, L
+    };
+    WindowLenEnum windowLenEnum;
 
     univector<float> psi;
     univector<int> ramp;

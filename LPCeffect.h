@@ -16,7 +16,7 @@ struct ChainSettings {
 
 class LPCeffect {
 public:
-    LPCeffect();
+    LPCeffect(const int sampleRate);
     [[nodiscard]] int getLatency() const {
         return windowSize;
     }
@@ -44,16 +44,18 @@ private:
 
 //    const int windowSize = 8192;
 //    const int windowSize = 4096;
-    const int windowSize = 2048;
+    int windowSize = 0;
 //    const int windowSize = 1024;
-    univector<fbase, 2048> hannWindow = window_hann(2048);
+    univector<fbase, 1024> hannWindowS = window_hann(1024);
+    univector<fbase, 2048> hannWindowM = window_hann(2048);
+    univector<fbase, 4096> hannWindowL = window_hann(4096);
 
     int index = 0;
     int index2 = 0;
 
     const float overlap = 0.5;
-    const int overlapSize = round(windowSize * overlap);
-    const int hopSize = windowSize - overlapSize;
+    int overlapSize = 0;
+    int hopSize = 0;
 
     int frameModelOrder = 70;
 
@@ -64,5 +66,10 @@ private:
     univector<float> filteredBuffer1;
     univector<float> filteredBuffer2;
 
-    ShiftEffect shiftEffect;
+    enum class WindowSizeEnum {
+        S, M, L
+    };
+    WindowSizeEnum windowSizeEnum;
+
+    ShiftEffect* shiftEffect;
 };

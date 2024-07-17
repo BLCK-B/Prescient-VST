@@ -5,15 +5,30 @@ using namespace kfr;
 using namespace std::chrono;
 
 // constructor
-LPCeffect::LPCeffect() :
-        carrierBuffer1(windowSize),
-        carrierBuffer2(windowSize),
-        sideChainBuffer1(windowSize),
-        sideChainBuffer2(windowSize),
-        filteredBuffer1(windowSize, 0.f),
-        filteredBuffer2(windowSize, 0.f)
-{
+LPCeffect::LPCeffect(const int sampleRate) {
+    shiftEffect = new ShiftEffect(sampleRate);
+    if (sampleRate < 44100) {
+        windowSize = 1024;
+        windowSizeEnum = WindowSizeEnum::S;
+    }
+    else if (44100 < sampleRate && sampleRate < 88200) {
+        windowSize = 2048;
+        windowSizeEnum = WindowSizeEnum::M;
+    }
+    else {
+        windowSize = 4096;
+        windowSizeEnum = WindowSizeEnum::L;
+    }
     jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
+    overlapSize = static_cast<int>(round(windowSize * overlap));
+    hopSize = windowSize - overlapSize;
+
+    carrierBuffer1.resize(windowSize);
+    carrierBuffer2.resize(windowSize);
+    sideChainBuffer1.resize(windowSize);
+    sideChainBuffer2.resize(windowSize);
+    filteredBuffer1.resize(windowSize, 0.f);
+    filteredBuffer2.resize(windowSize, 0.f);
 }
 
 // add received samples to buffers, process once buffer full
@@ -46,16 +61,16 @@ void LPCeffect::processing(univector<float>& overwrite, const univector<float>& 
     univector<float> result = voice;
 
     if (chainSettings.shift > 1.01 || chainSettings.shift < 0.99) {
-        result = shiftEffect.shiftSignal(result, chainSettings.shift);
+        result = shiftEffect -> shiftSignal(result, chainSettings.shift);
         matchPower(result, voice);
     }
     if (chainSettings.voice2 > 1.01 || chainSettings.voice2 < 0.99) {
-        univector<float> temp = shiftEffect.shiftSignal(voice, chainSettings.voice2);
+        univector<float> temp = shiftEffect -> shiftSignal(voice, chainSettings.voice2);
         matchPower(temp, voice);
         result += temp;
     }
     if (chainSettings.voice3 > 1.01 || chainSettings.voice3 < 0.99) {
-        univector<float> temp = shiftEffect.shiftSignal(voice, chainSettings.voice3);
+        univector<float> temp = shiftEffect -> shiftSignal(voice, chainSettings.voice3);
         matchPower(temp, voice);
         result += temp;
     }
@@ -92,7 +107,12 @@ univector<float> LPCeffect::FFToperations(FFToperation o, const univector<float>
         case FFToperation::IIR:
             divVectorWith(fftInp, fftCoeff);
             univector<float> filtered = irealdft(fftInp);
-            mulVectorWith(filtered, hannWindow);
+            if (windowSizeEnum == WindowSizeEnum::S)
+                mulVectorWith(filtered, hannWindowS);
+            else if (windowSizeEnum == WindowSizeEnum::M)
+                mulVectorWith(filtered, hannWindowM);
+            else
+                mulVectorWith(filtered, hannWindowL);
             return filtered;
     }
 }

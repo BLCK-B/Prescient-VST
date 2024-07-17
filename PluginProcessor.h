@@ -63,7 +63,11 @@ private:
 
     ChainSettings chainSettings;
 
-    LPCeffect lpcEffect[2];
+    LPCeffect lpcEffect[2] = {
+            LPCeffect(static_cast<int>(getSampleRate())),
+            LPCeffect(static_cast<int>(getSampleRate()))
+    };
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MyAudioProcessor)
 };
