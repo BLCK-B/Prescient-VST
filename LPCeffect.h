@@ -10,13 +10,13 @@
 using namespace kfr;
 
 struct ChainSettings {
-    float modelorder{70}, passthrough {0}, shift {1}, voice2 {1}, voice3 {1}, monostereo {1};
+    float modelorder{70}, passthrough {0}, shiftVoice1 {1}, shiftVoice2 {1}, shiftVoice3 {1}, monostereo {1};
     bool enableLPC {false};
 };
 
 class LPCeffect {
 public:
-    LPCeffect(const int sampleRate);
+    explicit LPCeffect(const int sampleRate);
     [[nodiscard]] int getLatency() const {
         return windowSize;
     }
@@ -31,11 +31,10 @@ private:
     void processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings);
 
     univector<float> FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients);
-    univector<float> autocorrelation(const univector<float>& fromBufer, bool saveFFT);
+    static univector<float> autocorrelation(const univector<float>& fromBufer);
     [[nodiscard]] univector<float> levinsonDurbin(const univector<float>& ofBuffer) const;
     univector<float> getResiduals(const univector<float>& ofBuffer);
 
-    static void normalise(univector<float>& input);
     void matchPower(univector<float>& input, const univector<float>& reference) const;
 
     static void mulVectorWith(univector<float>& vec1, const univector<float>& vec2);
@@ -50,7 +49,18 @@ private:
     univector<fbase, 2048> hannWindowM = window_hann(2048);
     univector<fbase, 4096> hannWindowL = window_hann(4096);
 
-    int index = 0;
+    enum class WindowSizeEnum {
+        S, M, L
+    };
+    WindowSizeEnum windowSizeEnum;
+
+    std::unordered_map<WindowSizeEnum, univector<fbase>> hannWindow = {
+            {WindowSizeEnum::S, hannWindowS},
+            {WindowSizeEnum::M, hannWindowM},
+            {WindowSizeEnum::L, hannWindowL}
+    };
+
+    int index1 = 0;
     int index2 = 0;
 
     const float overlap = 0.5;
@@ -65,11 +75,6 @@ private:
     univector<float> sideChainBuffer2;
     univector<float> filteredBuffer1;
     univector<float> filteredBuffer2;
-
-    enum class WindowSizeEnum {
-        S, M, L
-    };
-    WindowSizeEnum windowSizeEnum;
 
     ShiftEffect* shiftEffect;
 };

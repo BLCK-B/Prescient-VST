@@ -34,6 +34,12 @@ private:
     };
     WindowLenEnum windowLenEnum;
 
+    std::unordered_map<WindowLenEnum, univector<fbase>> hannWindow = {
+            {WindowLenEnum::S, hannWindowS},
+            {WindowLenEnum::M, hannWindowM},
+            {WindowLenEnum::L, hannWindowL}
+    };
+
     univector<float> psi;
     univector<int> ramp;
     univector<float> omega;

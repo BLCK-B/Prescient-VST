@@ -50,14 +50,7 @@ univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float s
     int endCycle = std::floor(input.size() - std::max(LEN, ramp[LEN - 1]));
     for (int anCycle = 0; anCycle < endCycle; anCycle += analysisHop) {
         std::copy(input.begin() + anCycle, input.begin() + anCycle + LEN, grain.begin());
-
-        if (windowLenEnum == WindowLenEnum::S)
-            mulVectorWith(grain, hannWindowS);
-        else if (windowLenEnum == WindowLenEnum::M)
-            mulVectorWith(grain, hannWindowM);
-        else
-            mulVectorWith(grain, hannWindowL);
-
+        mulVectorWith(grain, hannWindow[windowLenEnum]);
         fftGrain = padFFT(grain);
 
         // phase information: output psi
@@ -67,26 +60,13 @@ univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float s
         previousPhi = phi;
 
         // shifting: output correction factor
-        if (windowLenEnum == WindowLenEnum::S)
-            f1 = absOf(padFFT(mul(input[anCycle], hannWindowS)) / LEN);
-        else if (windowLenEnum == WindowLenEnum::M)
-            f1 = absOf(padFFT(mul(input[anCycle], hannWindowM)) / LEN);
-        else
-            f1 = absOf(padFFT(mul(input[anCycle], hannWindowL)) / LEN);
-
+        f1 = absOf(padFFT(mul(input[anCycle], hannWindow[windowLenEnum])) / LEN);
         corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0]));
         mulVectorWith(corrected, expComplex(makeComplex(psi)));
 
-        // interpolation
+        // overlap
         grain = real(cutIFFT(corrected));
-
-        if (windowLenEnum == WindowLenEnum::S)
-            mulVectorWith(grain, hannWindowS);
-        else if (windowLenEnum == WindowLenEnum::M)
-            mulVectorWith(grain, hannWindowM);
-        else
-            mulVectorWith(grain, hannWindowL);
-
+        mulVectorWith(grain, hannWindow[windowLenEnum]);
         for (int ai = anCycle; ai < anCycle + resampledLEN; ++ai)
             overLapOut[ai] += grain[std::floor(x[ai - anCycle]) - 1];
     }
