@@ -8,16 +8,15 @@ MyAudioProcessor::MyAudioProcessor() :
         .withInput("Input",  juce::AudioChannelSet::stereo(), true)
         .withInput("Sidechain",  juce::AudioChannelSet::stereo(), true)
         .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-    )
-{
-    treeState.addParameterListener("model order", this);
-    treeState.addParameterListener("passthrough", this);
-    treeState.addParameterListener("enableLPC", this);
-    treeState.addParameterListener("shiftVoice1", this);
-    treeState.addParameterListener("shiftVoice2", this);
-    treeState.addParameterListener("shiftVoice3", this);
-    treeState.addParameterListener("monostereo", this);
-}
+    ),
+    treeState{*this, nullptr, "PARAMETERS", createParameterLayout()},
+    gain{treeState.getRawParameterValue("GAIN")},
+    modelOrder{treeState.getRawParameterValue("model order")},
+    shiftVoice1{treeState.getRawParameterValue("shiftVoice1")},
+    shiftVoice2{treeState.getRawParameterValue("shiftVoice2")},
+    shiftVoice3{treeState.getRawParameterValue("shiftVoice3")},
+    monostereo{treeState.getRawParameterValue("monostereo")}
+{ }
 
 MyAudioProcessor::~MyAudioProcessor() { }
 
@@ -30,33 +29,37 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     settings.shiftVoice3 = treeState.getRawParameterValue("shiftVoice3")->load();
     settings.enableLPC = treeState.getRawParameterValue("enableLPC")->load();
     settings.monostereo = treeState.getRawParameterValue("monostereo")->load();
+    settings.GAIN = treeState.getRawParameterValue("GAIN")->load();
     return settings;
 }
 
 //defining parameters of the plugin
-juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createParameterLayout()
-{
-    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createParameterLayout() {
+    using namespace juce;
+    AudioProcessorValueTreeState::ParameterLayout layout;
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("model order", "model order",
-           juce::NormalisableRange<float>(6.f, 76.f, 1.f, 1.f), 38.f));
+    layout.add(std::make_unique<AudioParameterFloat>("model order", "model order",
+           NormalisableRange<float>(6.f, 76.f, 1.f, 1.f), 38.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("passthrough", "passthrough",
-           juce::NormalisableRange<float>(0.f, 2.f, 0.1f, 1.f), 0.f));
+    layout.add(std::make_unique<AudioParameterFloat>("passthrough", "passthrough",
+           NormalisableRange<float>(0.f, 2.f, 0.1f, 1.f), 0.f));
 
-    layout.add(std::make_unique<juce::AudioParameterBool>("enableLPC", "enableLPC", false));
+    layout.add(std::make_unique<AudioParameterBool>("enableLPC", "enableLPC", false));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("shiftVoice1", "shiftVoice1",
-           juce::NormalisableRange<float>(0.6f, 2.f, 0.01f, 1.f), 1.f));
+    layout.add(std::make_unique<AudioParameterFloat>("shiftVoice1", "shiftVoice1",
+           NormalisableRange<float>(0.6f, 2.f, 0.01f, 1.f), 1.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("shiftVoice2", "shiftVoice2",
-            juce::NormalisableRange<float>(0.6f, 2.f, 0.01f, 1.f), 1.f));
+    layout.add(std::make_unique<AudioParameterFloat>("shiftVoice2", "shiftVoice2",
+            NormalisableRange<float>(0.6f, 2.f, 0.01f, 1.f), 1.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("shiftVoice3", "shiftVoice3",
-            juce::NormalisableRange<float>(0.6f, 2.f, 0.01f, 1.f), 1.f));
+    layout.add(std::make_unique<AudioParameterFloat>("shiftVoice3", "shiftVoice3",
+            NormalisableRange<float>(0.6f, 2.f, 0.01f, 1.f), 1.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("monostereo", "monostereo",
-           juce::NormalisableRange<float>(0.f, 1.f, 0.01f, 1.f), 1.f));
+    layout.add(std::make_unique<AudioParameterFloat>("monostereo", "monostereo",
+           NormalisableRange<float>(0.f, 1.f, 0.01f, 1.f), 1.f));
+
+    layout.add(std::make_unique<AudioParameterFloat>(
+            "GAIN", "GAIN", NormalisableRange<float>{0.f, 1.f, 0.01f, 0.9f}, 1.f));
 
     return layout;
 }
@@ -165,8 +168,13 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
 //        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 
-        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, chainSettings);
-        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, chainSettings);
+        std::cout << "gain: " << chainSettings.GAIN << "   " << *gain << "\n";
+
+        sampleL = 0;
+        sampleR = 0;
+
+//        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, chainSettings);
+//        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, chainSettings);
 
         float width = chainSettings.monostereo;
         auto sideNew = width * 0.5 * (sampleL - sampleR);

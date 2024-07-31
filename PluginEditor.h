@@ -16,7 +16,12 @@ private:
     // access the processor object that created it.
     MyAudioProcessor& processorRef;
 
+    juce::WebSliderRelay webGainRelay;
+    juce::WebSliderParameterAttachment webGainSliderAttachment;
+
     juce::WebBrowserComponent webView;
+
+    const juce::ParameterID GAIN{"GAIN", 1};
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MyAudioProcessorEditor)

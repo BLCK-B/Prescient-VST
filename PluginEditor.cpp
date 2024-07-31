@@ -1,5 +1,12 @@
 #include "PluginEditor.h"
 
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <optional>
+#include "PluginProcessor.h"
+#include "juce_core/juce_core.h"
+#include "juce_graphics/juce_graphics.h"
+#include "juce_gui_extra/juce_gui_extra.h"
+
 namespace {
     std::vector<std::byte> streamToVector(juce::InputStream& stream) {
         // Workaround to make ssize_t work cross-platform.
@@ -42,24 +49,31 @@ static const char* getMimeForExtension (const juce::String& extension) {
 constexpr auto LOCAL_DEV_SERVER_ADDRESS = "http://127.0.0.1:8080";
 
 //==============================================================================
-
-MyAudioProcessorEditor::MyAudioProcessorEditor (MyAudioProcessor& p)
-        : AudioProcessorEditor (&p), processorRef (p),
+MyAudioProcessorEditor::MyAudioProcessorEditor(MyAudioProcessor &p)
+        : AudioProcessorEditor(&p), processorRef(p),
+          webGainRelay{
+                  webView, "GAIN"
+          },
+          webGainSliderAttachment{
+                  *processorRef.treeState.getParameter("GAIN"), webGainRelay, nullptr
+          },
           webView{juce::WebBrowserComponent::Options{}
                           .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
-                          .withWinWebView2Options (juce::WebBrowserComponent::Options::WinWebView2{}
-                                                           .withBackgroundColour(juce::Colours::white)
-                                                           .withUserDataFolder (juce::File::getSpecialLocation (juce::File::SpecialLocationType::tempDirectory)))
-                          .withResourceProvider([this](const auto& url) { return getResource(url); },juce::URL{LOCAL_DEV_SERVER_ADDRESS}.getOrigin())
+                          .withWinWebView2Options(juce::WebBrowserComponent::Options::WinWebView2{}
+                                                          .withBackgroundColour(juce::Colours::white)
+                                                          .withUserDataFolder(juce::File::getSpecialLocation(juce::File::SpecialLocationType::tempDirectory)))
+                          .withNativeIntegrationEnabled()
+                          .withResourceProvider([this](const auto &url) { return getResource(url); },juce::URL{LOCAL_DEV_SERVER_ADDRESS}.getOrigin())
+                          .withOptionsFrom(webGainRelay)
           } {
-    juce::ignoreUnused (processorRef);
+    juce::ignoreUnused(processorRef);
 
     addAndMakeVisible(webView);
 
     webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
 
     setResizable(true, true);
-    setSize (800, 600);
+    setSize(800, 600);
 }
 
 MyAudioProcessorEditor::~MyAudioProcessorEditor() { }
