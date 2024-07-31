@@ -6,7 +6,7 @@ using namespace std::chrono;
 
 // constructor
 LPCeffect::LPCeffect(const int sampleRate) {
-    shiftEffect = new ShiftEffect(sampleRate);
+//    shiftEffect = new ShiftEffect(sampleRate);
     if (sampleRate < 44100) {
         windowSize = 1024;
         windowSizeEnum = WindowSizeEnum::S;
@@ -59,13 +59,13 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, const ChainS
 void LPCeffect::processing(univector<float>& toOverwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings) {
     univector<float> result = voice;
 
-    if (chainSettings.shiftVoice1 > 1.01 || chainSettings.shiftVoice1 < 0.99)
-        result = shiftEffect -> shiftSignal(result, chainSettings.shiftVoice1);
-    if (chainSettings.shiftVoice2 > 1.01 || chainSettings.shiftVoice2 < 0.99)
-        result += shiftEffect -> shiftSignal(voice, chainSettings.shiftVoice2);
-    if (chainSettings.shiftVoice3 > 1.01  || chainSettings.shiftVoice3 < 0.99)
-        result += shiftEffect -> shiftSignal(voice, chainSettings.shiftVoice3);
-    matchPower(result, voice);
+//    if (chainSettings.shiftVoice1 > 1.01 || chainSettings.shiftVoice1 < 0.99)
+//        result = shiftEffect -> shiftSignal(result, chainSettings.shiftVoice1);
+//    if (chainSettings.shiftVoice2 > 1.01 || chainSettings.shiftVoice2 < 0.99)
+//        result += shiftEffect -> shiftSignal(voice, chainSettings.shiftVoice2);
+//    if (chainSettings.shiftVoice3 > 1.01  || chainSettings.shiftVoice3 < 0.99)
+//        result += shiftEffect -> shiftSignal(voice, chainSettings.shiftVoice3);
+//    matchPower(result, voice);
 
     if (chainSettings.enableLPC) {
         result = processLPC(result, carrier);

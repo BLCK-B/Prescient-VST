@@ -2,7 +2,7 @@
 #include <kfr/base.hpp>
 #include <kfr/dft.hpp>
 #include <kfr/dsp.hpp>
-#include "ShiftEffect.cpp"
+//#include "ShiftEffect.cpp"
 
 #ifndef AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
 #define AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
@@ -41,10 +41,8 @@ private:
     static void mulVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2);
     static void divVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2);
 
-//    const int windowSize = 8192;
-//    const int windowSize = 4096;
     int windowSize = 0;
-//    const int windowSize = 1024;
+
     univector<fbase, 1024> hannWindowS = window_hann(1024);
     univector<fbase, 2048> hannWindowM = window_hann(2048);
     univector<fbase, 4096> hannWindowL = window_hann(4096);
@@ -76,5 +74,5 @@ private:
     univector<float> filteredBuffer1;
     univector<float> filteredBuffer2;
 
-    ShiftEffect* shiftEffect;
+//    ShiftEffect* shiftEffect;
 };

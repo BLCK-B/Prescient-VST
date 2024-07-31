@@ -1,7 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "LPCeffect.cpp"
-#include "LPCtests.cpp"
 
 //==============================================================================
 MyAudioProcessor::MyAudioProcessor() :
@@ -9,7 +8,7 @@ MyAudioProcessor::MyAudioProcessor() :
         .withInput("Input",  juce::AudioChannelSet::stereo(), true)
         .withInput("Sidechain",  juce::AudioChannelSet::stereo(), true)
         .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-        )
+    )
 {
     treeState.addParameterListener("model order", this);
     treeState.addParameterListener("passthrough", this);
@@ -20,9 +19,7 @@ MyAudioProcessor::MyAudioProcessor() :
     treeState.addParameterListener("monostereo", this);
 }
 
-MyAudioProcessor::~MyAudioProcessor()
-{
-}
+MyAudioProcessor::~MyAudioProcessor() { }
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     ChainSettings settings;
@@ -125,13 +122,6 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.maximumBlockSize = samplesPerBlock;
     spec.numChannels = 2;
     spec.sampleRate = sampleRate;
-
-//    LPCtests lpCtests;
-
-//    lpCtests.levinsonDurbinTest();
-//    lpCtests.IIRfilterTest();
-//    lpCtests.convolutionFFT();
-//    lpCtests.shiftSignalTest();
 }
 
 void MyAudioProcessor::releaseResources() {
@@ -166,12 +156,12 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
-        float sampleSideChainL = sideChain.getReadPointer(0)[sample];
-        float sampleSideChainR = sideChain.getReadPointer(1)[sample];
-//        float sampleSideChainL = 0;
-//        float sampleSideChainR = 0;
-
-        // LPC
+        // standalone cant use these pointers
+//        float sampleSideChainL = sideChain.getReadPointer(0)[sample];
+//        float sampleSideChainR = sideChain.getReadPointer(1)[sample];
+        float sampleSideChainL = 0;
+        float sampleSideChainR = 0;
+        //==============================================
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
 //        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 
@@ -191,13 +181,13 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
 //==============================================================================
 bool MyAudioProcessor::hasEditor() const {
-    return true; //change this to false if you choose to not supply an editor
+    return true; // false if you choose to not supply an editor
 }
 
 juce::AudioProcessorEditor* MyAudioProcessor::createEditor() {
-    //return new MyAudioProcessorEditor (*this);
+    return new MyAudioProcessorEditor (*this);
     //generic UI:
-    return new juce::GenericAudioProcessorEditor(*this);
+//    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
