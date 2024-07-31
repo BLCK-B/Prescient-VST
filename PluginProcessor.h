@@ -3,9 +3,6 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 #include "LPCeffect.h"
-
-ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState);
-
 //==============================================================================
 //this class inherits from AudioProcessor and a valuetreestate listener
 class MyAudioProcessor final : public juce::AudioProcessor, juce::AudioProcessorValueTreeState::Listener {
@@ -43,8 +40,8 @@ public:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState treeState;
 
+    ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState);
 private:
-    std::atomic<float>* gain{nullptr};
     std::atomic<float>* modelOrder{nullptr};
     std::atomic<float>* passthrough{nullptr};
     std::atomic<bool>* enableLPC{nullptr};

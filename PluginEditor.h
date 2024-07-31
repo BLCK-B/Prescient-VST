@@ -16,12 +16,27 @@ private:
     // access the processor object that created it.
     MyAudioProcessor& processorRef;
 
-    juce::WebSliderRelay webGainRelay;
-    juce::WebSliderParameterAttachment webGainSliderAttachment;
+    juce::WebSliderRelay modelOrderRelay;
+    juce::WebSliderParameterAttachment modelOrderSliderAttachment;
+    juce::WebSliderRelay passthroughRelay;
+    juce::WebSliderParameterAttachment passthroughSliderAttachment;
+    juce::WebSliderRelay shiftVoice1Relay;
+    juce::WebSliderParameterAttachment shiftVoice1SliderAttachment;
+    juce::WebSliderRelay shiftVoice2Relay;
+    juce::WebSliderParameterAttachment shiftVoice2SliderAttachment;
+    juce::WebSliderRelay shiftVoice3Relay;
+    juce::WebSliderParameterAttachment shiftVoice3SliderAttachment;
+    juce::WebSliderRelay monostereoRelay;
+    juce::WebSliderParameterAttachment monostereoSliderAttachment;
 
     juce::WebBrowserComponent webView;
 
-    const juce::ParameterID GAIN{"GAIN", 1};
+    const juce::ParameterID passthrough{"passthrough", 1};
+    const juce::ParameterID modelOrder{"model order", 1};
+    const juce::ParameterID shiftVoice1{"shiftVoice1", 1};
+    const juce::ParameterID shiftVoice2{"shiftVoice2", 1};
+    const juce::ParameterID shiftVoice3{"shiftVoice3", 1};
+    const juce::ParameterID monostereo{"monostereo", 1};
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MyAudioProcessorEditor)

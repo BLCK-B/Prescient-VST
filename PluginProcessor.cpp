@@ -10,7 +10,7 @@ MyAudioProcessor::MyAudioProcessor() :
         .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
     ),
     treeState{*this, nullptr, "PARAMETERS", createParameterLayout()},
-    gain{treeState.getRawParameterValue("GAIN")},
+    passthrough{treeState.getRawParameterValue("passthrough")},
     modelOrder{treeState.getRawParameterValue("model order")},
     shiftVoice1{treeState.getRawParameterValue("shiftVoice1")},
     shiftVoice2{treeState.getRawParameterValue("shiftVoice2")},
@@ -20,16 +20,14 @@ MyAudioProcessor::MyAudioProcessor() :
 
 MyAudioProcessor::~MyAudioProcessor() { }
 
-ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
+ChainSettings MyAudioProcessor::getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
     ChainSettings settings;
-    settings.modelorder = treeState.getRawParameterValue("model order")->load();
-    settings.passthrough = treeState.getRawParameterValue("passthrough")->load();
-    settings.shiftVoice1 = treeState.getRawParameterValue("shiftVoice1")->load();
-    settings.shiftVoice2 = treeState.getRawParameterValue("shiftVoice2")->load();
-    settings.shiftVoice3 = treeState.getRawParameterValue("shiftVoice3")->load();
-    settings.enableLPC = treeState.getRawParameterValue("enableLPC")->load();
-    settings.monostereo = treeState.getRawParameterValue("monostereo")->load();
-    settings.GAIN = treeState.getRawParameterValue("GAIN")->load();
+    settings.passthrough = *passthrough;
+    settings.shiftVoice1 = *shiftVoice1;
+    settings.shiftVoice2 = *shiftVoice2;
+    settings.shiftVoice3 = *shiftVoice3;
+    settings.enableLPC = *enableLPC;
+    settings.monostereo = *monostereo;
     return settings;
 }
 
@@ -58,15 +56,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
     layout.add(std::make_unique<AudioParameterFloat>("monostereo", "monostereo",
            NormalisableRange<float>(0.f, 1.f, 0.01f, 1.f), 1.f));
 
-    layout.add(std::make_unique<AudioParameterFloat>(
-            "GAIN", "GAIN", NormalisableRange<float>{0.f, 1.f, 0.01f, 0.9f}, 1.f));
-
     return layout;
 }
-//listener for parameterID change
-void MyAudioProcessor::parameterChanged(const juce::String& parameterID, float newValue) {
-    chainSettings = getChainSettings(treeState);
-}
+
+void MyAudioProcessor::parameterChanged(const juce::String& parameterID, float newValue) { }
 
 //==============================================================================
 const juce::String MyAudioProcessor::getName() const {
@@ -168,7 +161,8 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 //        sampleL = sampleR = rand() % 1000 / 1000.0;
 //        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 
-        std::cout << "gain: " << chainSettings.GAIN << "   " << *gain << "\n";
+        std::cout << "drywet:  " << *passthrough << "\n";
+        std::cout << "modelOrder: " << *modelOrder << "\n";
 
         sampleL = 0;
         sampleR = 0;

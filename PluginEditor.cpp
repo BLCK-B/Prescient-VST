@@ -51,11 +51,41 @@ constexpr auto LOCAL_DEV_SERVER_ADDRESS = "http://127.0.0.1:8080";
 //==============================================================================
 MyAudioProcessorEditor::MyAudioProcessorEditor(MyAudioProcessor &p)
         : AudioProcessorEditor(&p), processorRef(p),
-          webGainRelay{
-                  webView, "GAIN"
+          modelOrderRelay{
+                  webView, "model order"
           },
-          webGainSliderAttachment{
-                  *processorRef.treeState.getParameter("GAIN"), webGainRelay, nullptr
+          modelOrderSliderAttachment{
+                  *processorRef.treeState.getParameter("model order"), modelOrderRelay, nullptr
+          },
+          passthroughRelay{
+                  webView, "passthrough"
+          },
+          passthroughSliderAttachment{
+                  *processorRef.treeState.getParameter("passthrough"), passthroughRelay, nullptr
+          },
+          shiftVoice1Relay{
+                  webView, "shiftVoice1"
+          },
+          shiftVoice1SliderAttachment{
+                  *processorRef.treeState.getParameter("shiftVoice1"), shiftVoice1Relay, nullptr
+          },
+          shiftVoice2Relay{
+                  webView, "shiftVoice2"
+          },
+          shiftVoice2SliderAttachment{
+                  *processorRef.treeState.getParameter("shiftVoice2"), shiftVoice2Relay, nullptr
+          },
+          shiftVoice3Relay{
+                  webView, "shiftVoice3"
+          },
+          shiftVoice3SliderAttachment{
+                  *processorRef.treeState.getParameter("shiftVoice3"), shiftVoice3Relay, nullptr
+          },
+          monostereoRelay{
+                  webView, "monostereo"
+          },
+          monostereoSliderAttachment{
+                  *processorRef.treeState.getParameter("monostereo"), monostereoRelay, nullptr
           },
           webView{juce::WebBrowserComponent::Options{}
                           .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
@@ -64,7 +94,12 @@ MyAudioProcessorEditor::MyAudioProcessorEditor(MyAudioProcessor &p)
                                                           .withUserDataFolder(juce::File::getSpecialLocation(juce::File::SpecialLocationType::tempDirectory)))
                           .withNativeIntegrationEnabled()
                           .withResourceProvider([this](const auto &url) { return getResource(url); },juce::URL{LOCAL_DEV_SERVER_ADDRESS}.getOrigin())
-                          .withOptionsFrom(webGainRelay)
+                          .withOptionsFrom(modelOrderRelay)
+                          .withOptionsFrom(passthroughRelay)
+                          .withOptionsFrom(shiftVoice1Relay)
+                          .withOptionsFrom(shiftVoice2Relay)
+                          .withOptionsFrom(shiftVoice3Relay)
+                          .withOptionsFrom(monostereoRelay)
           } {
     juce::ignoreUnused(processorRef);
 
@@ -81,7 +116,7 @@ MyAudioProcessorEditor::~MyAudioProcessorEditor() { }
 //==============================================================================
 
 auto MyAudioProcessorEditor::getResource(const juce::String& url) const -> std::optional<Resource> {
-    static const auto resourceFileRoot = juce::File{"C:/Users/legionntb/Desktop/AudioPlugin/GUI/public"};
+    static const auto resourceFileRoot = juce::File{"C:/MyFilesDontDelete/project/MyAudioPlugin/GUI/public"};
 //    static const auto resourceFileRoot = juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentApplicationFile)
 //                    .getChildFile("public");
 
