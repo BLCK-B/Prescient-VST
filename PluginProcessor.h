@@ -40,11 +40,11 @@ public:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState treeState;
 
-    ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState);
+    ChainSettings getChainSettings();
 private:
     std::atomic<float>* modelOrder{nullptr};
     std::atomic<float>* passthrough{nullptr};
-    std::atomic<bool>* enableLPC{nullptr};
+    std::atomic<float>* enableLPC{nullptr};
     std::atomic<float>* shiftVoice1{nullptr};
     std::atomic<float>* shiftVoice2{nullptr};
     std::atomic<float>* shiftVoice3{nullptr};

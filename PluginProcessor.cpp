@@ -15,19 +15,20 @@ MyAudioProcessor::MyAudioProcessor() :
     shiftVoice1{treeState.getRawParameterValue("shiftVoice1")},
     shiftVoice2{treeState.getRawParameterValue("shiftVoice2")},
     shiftVoice3{treeState.getRawParameterValue("shiftVoice3")},
-    monostereo{treeState.getRawParameterValue("monostereo")}
+    monostereo{treeState.getRawParameterValue("monostereo")},
+    enableLPC{treeState.getRawParameterValue("enableLPC")}
 { }
 
 MyAudioProcessor::~MyAudioProcessor() { }
 
-ChainSettings MyAudioProcessor::getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
+ChainSettings MyAudioProcessor::getChainSettings() {
     ChainSettings settings;
-    settings.passthrough = *passthrough;
-    settings.shiftVoice1 = *shiftVoice1;
-    settings.shiftVoice2 = *shiftVoice2;
-    settings.shiftVoice3 = *shiftVoice3;
-    settings.enableLPC = *enableLPC;
-    settings.monostereo = *monostereo;
+    settings.passthrough = *treeState.getRawParameterValue("passthrough");
+    settings.shiftVoice1 = *treeState.getRawParameterValue("shiftVoice1");
+    settings.shiftVoice2 = *treeState.getRawParameterValue("shiftVoice2");
+    settings.shiftVoice3 = *treeState.getRawParameterValue("shiftVoice3");
+    settings.enableLPC = *treeState.getRawParameterValue("enableLPC");
+    settings.monostereo = *treeState.getRawParameterValue("monostereo");
     return settings;
 }
 
@@ -40,9 +41,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
            NormalisableRange<float>(6.f, 76.f, 1.f, 1.f), 38.f));
 
     layout.add(std::make_unique<AudioParameterFloat>("passthrough", "passthrough",
-           NormalisableRange<float>(0.f, 2.f, 0.1f, 1.f), 0.f));
+           NormalisableRange<float>(0.f, 1.f, 0.1f, 1.f), 0.f));
 
-    layout.add(std::make_unique<AudioParameterBool>("enableLPC", "enableLPC", false));
+    layout.add(std::make_unique<AudioParameterFloat>("enableLPC", "enableLPC",
+            NormalisableRange<float>(0.f, 1.f, 1.f, 1.f), 0.f));
 
     layout.add(std::make_unique<AudioParameterFloat>("shiftVoice1", "shiftVoice1",
            NormalisableRange<float>(0.6f, 2.f, 0.01f, 1.f), 1.f));
@@ -110,7 +112,7 @@ void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     chainSettings.shiftVoice1 = 1.f;
     chainSettings.shiftVoice2 = 1.f;
     chainSettings.shiftVoice3 = 1.f;
-    chainSettings.enableLPC = false;
+    chainSettings.enableLPC = 0.f;
     chainSettings.monostereo = 1.f;
     setLatencySamples(lpcEffect[0].getLatency());
     juce::ignoreUnused (sampleRate, samplesPerBlock);
@@ -158,17 +160,15 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         float sampleSideChainL = 0;
         float sampleSideChainR = 0;
         //==============================================
-//        sampleL = sampleR = rand() % 1000 / 1000.0;
+        sampleL = sampleR = rand() % 1000 / 1000.0;
 //        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 
-        std::cout << "drywet:  " << *passthrough << "\n";
-        std::cout << "modelOrder: " << *modelOrder << "\n";
+        ChainSettings params = getChainSettings();
 
-        sampleL = 0;
-        sampleR = 0;
+        std::cout<<params.enableLPC<<"\n";
 
-//        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, chainSettings);
-//        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, chainSettings);
+        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, params);
+        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, params);
 
         float width = chainSettings.monostereo;
         auto sideNew = width * 0.5 * (sampleL - sampleR);

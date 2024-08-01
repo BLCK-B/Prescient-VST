@@ -67,7 +67,7 @@ void LPCeffect::processing(univector<float>& toOverwrite, const univector<float>
 //        result += shiftEffect -> shiftSignal(voice, chainSettings.shiftVoice3);
 //    matchPower(result, voice);
 
-    if (chainSettings.enableLPC) {
+    if (chainSettings.enableLPC > 0.99) {
         result = processLPC(result, carrier);
         matchPower(result, voice);
     }

@@ -27,10 +27,13 @@
 </template>
 
 <script>
+import * as Juce from '@/juce/index.js'
+
 export default {
   props: {
     defaultVal: Number,
-    knobText: String
+    knobText: String,
+    backendId: String
   },
   mounted() {
     this.value = this.defaultVal
@@ -47,6 +50,11 @@ export default {
   computed: {
     strokeOffset() {
       return this.circumference * (1 - this.value / 100)
+    }
+  },
+  watch: {
+    value(newVal) {
+      this.sendToBackend(newVal)
     }
   },
   methods: {
@@ -78,6 +86,11 @@ export default {
     },
     resetToDefault() {
       this.value = this.defaultVal
+    },
+    sendToBackend(newVal) {
+      const sliderState = Juce.getSliderState(this.backendId)
+      console.log(newVal < 0 ? 0.008 * newVal + 1 : 0.02 * newVal + 1)
+      sliderState.setNormalisedValue(newVal < 0 ? 0.008 * newVal + 1 : 0.02 * newVal + 1)
     }
   }
 }
@@ -97,8 +110,8 @@ export default {
 
 .knob {
   position: relative;
-  width: 150px;
-  height: 150px;
+  width: 105px;
+  height: 105px;
   cursor: pointer;
 }
 
@@ -116,10 +129,10 @@ export default {
 }
 
 .knobText {
-  position: relative;
+  position: absolute;
   color: black;
   font-weight: bold;
-  top: 80px;
+  top: 105%;
 }
 
 .knobInactive {
@@ -131,7 +144,7 @@ export default {
   stroke: #fd6c00;
   stroke-width: 5.5;
   stroke-linecap: round;
-  stroke-dasharray: 282.74; /* 2 * Math.PI * 45 */
+  stroke-dasharray: 282.74;
 }
 
 .knob-value {

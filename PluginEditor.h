@@ -28,6 +28,8 @@ private:
     juce::WebSliderParameterAttachment shiftVoice3SliderAttachment;
     juce::WebSliderRelay monostereoRelay;
     juce::WebSliderParameterAttachment monostereoSliderAttachment;
+    juce::WebSliderRelay enableLPCRelay;
+    juce::WebSliderParameterAttachment enableLPCSliderAttachment;
 
     juce::WebBrowserComponent webView;
 
@@ -37,6 +39,7 @@ private:
     const juce::ParameterID shiftVoice2{"shiftVoice2", 1};
     const juce::ParameterID shiftVoice3{"shiftVoice3", 1};
     const juce::ParameterID monostereo{"monostereo", 1};
+    const juce::ParameterID enableLPC{"enableLPC", 1};
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MyAudioProcessorEditor)

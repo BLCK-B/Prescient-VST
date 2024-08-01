@@ -1,11 +1,6 @@
 <template>
   <div class="knob-container">
-    <div
-      class="knob"
-      @mousedown="startDragging"
-      @wheel.prevent="handleScroll"
-      @dblclick="resetToDefault"
-    >
+    <div class="knob" @click="toggle">
       <svg class="knob-svg" viewBox="0 0 100 100">
         <circle class="knob-bg" :class="{ knobInactive: value === 0 }" cx="50" cy="50" r="45" />
         <circle
@@ -17,11 +12,18 @@
           :stroke-dashoffset="strokeOffset"
         />
       </svg>
-      <img class="knob-center-image" src="../components/icons/knobpic.png" alt="Knob Center" />
-      <!-- <div class="knob-value">{{ value }}</div> -->
-    </div>
-    <div class="knobText">
-      <p>{{ knobText }}</p>
+      <img
+        v-if="this.value == 100"
+        class="knob-center-image"
+        src="../components/icons/lpcon.png"
+        alt="Knob Center"
+      />
+      <img
+        v-else
+        class="knob-center-image"
+        src="../components/icons/lpcoff.png"
+        alt="Knob Center"
+      />
     </div>
   </div>
 </template>
@@ -31,19 +33,14 @@ import * as Juce from '@/juce/index.js'
 
 export default {
   props: {
-    defaultVal: Number,
-    knobText: String,
     backendId: String
   },
   mounted() {
-    this.value = this.defaultVal
+    this.value = 0
   },
   data() {
     return {
       value: 0,
-      isDragging: false,
-      startY: 0,
-      startValue: 0,
       circumference: 2 * Math.PI * 45
     }
   },
@@ -52,44 +49,14 @@ export default {
       return this.circumference * (1 - this.value / 100)
     }
   },
-  watch: {
-    value(newVal) {
-      this.sendToBackend(newVal)
-    }
-  },
   methods: {
-    startDragging(event) {
-      this.isDragging = true
-      this.startY = event.clientY
-      this.startValue = this.value
-      document.addEventListener('mousemove', this.handleDrag)
-      document.addEventListener('mouseup', this.stopDragging)
+    toggle() {
+      this.value = this.value == 100 ? 0 : 100
+      this.sendToBackend()
     },
-    stopDragging() {
-      this.isDragging = false
-      document.removeEventListener('mousemove', this.handleDrag)
-      document.removeEventListener('mouseup', this.stopDragging)
-    },
-    handleDrag(event) {
-      if (this.isDragging) {
-        const deltaMove = this.startY - event.clientY
-        this.value = this.startValue + Math.round(deltaMove / 2)
-        this.value = Math.max(0, Math.min(100, this.value))
-      }
-    },
-    handleScroll(event) {
-      if (event.target.closest('.knob')) {
-        this.value += event.deltaY > 0 ? -2 : 2
-        this.value = Math.max(0, Math.min(100, this.value))
-        event.preventDefault()
-      }
-    },
-    resetToDefault() {
-      this.value = this.defaultVal
-    },
-    sendToBackend(newVal) {
+    sendToBackend() {
       const sliderState = Juce.getSliderState(this.backendId)
-      sliderState.setNormalisedValue(newVal / 100)
+      sliderState.setNormalisedValue(this.value / 100)
     }
   }
 }
@@ -97,7 +64,6 @@ export default {
 
 <style scoped>
 * {
-  transition: 0.03s;
   user-select: none;
 }
 .knob-container {
@@ -128,10 +94,10 @@ export default {
 }
 
 .knobText {
-  position: absolute;
+  position: relative;
   color: black;
   font-weight: bold;
-  top: 105%;
+  top: 80px;
 }
 
 .knobInactive {

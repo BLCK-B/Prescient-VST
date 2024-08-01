@@ -87,6 +87,12 @@ MyAudioProcessorEditor::MyAudioProcessorEditor(MyAudioProcessor &p)
           monostereoSliderAttachment{
                   *processorRef.treeState.getParameter("monostereo"), monostereoRelay, nullptr
           },
+          enableLPCRelay{
+                  webView, "enableLPC"
+          },
+          enableLPCSliderAttachment{
+                  *processorRef.treeState.getParameter("enableLPC"),enableLPCRelay, nullptr
+          },
           webView{juce::WebBrowserComponent::Options{}
                           .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
                           .withWinWebView2Options(juce::WebBrowserComponent::Options::WinWebView2{}
@@ -100,6 +106,7 @@ MyAudioProcessorEditor::MyAudioProcessorEditor(MyAudioProcessor &p)
                           .withOptionsFrom(shiftVoice2Relay)
                           .withOptionsFrom(shiftVoice3Relay)
                           .withOptionsFrom(monostereoRelay)
+                          .withOptionsFrom(enableLPCRelay)
           } {
     juce::ignoreUnused(processorRef);
 
@@ -108,7 +115,7 @@ MyAudioProcessorEditor::MyAudioProcessorEditor(MyAudioProcessor &p)
     webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
 
     setResizable(true, true);
-    setSize(800, 600);
+    setSize(810, 510);
 }
 
 MyAudioProcessorEditor::~MyAudioProcessorEditor() { }
