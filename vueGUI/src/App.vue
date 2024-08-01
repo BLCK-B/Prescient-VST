@@ -2,7 +2,7 @@
   <div class="app">
     <div class="knobs">
       <MyKnob class="knob" :default-val="50" knobText="Order" backendId="model order" />
-      <MyKnob class="knob" :default-val="0" knobText="Mono" backendId="monostereo" />
+      <MyKnob class="knob" :default-val="100" knobText="Mono" backendId="monostereo" />
       <MyKnob class="knob" :default-val="0" knobText="Dry / wet" backendId="passthrough" />
       <MyKnobSplit class="knob" :default-val="0" knobText="Voice 1" backendId="shiftVoice1" />
       <MyKnobSplit class="knob" :default-val="0" knobText="Voice 2" backendId="shiftVoice2" />

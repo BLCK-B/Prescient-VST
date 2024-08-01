@@ -99,7 +99,7 @@ MyAudioProcessorEditor::MyAudioProcessorEditor(MyAudioProcessor &p)
                                                           .withBackgroundColour(juce::Colours::white)
                                                           .withUserDataFolder(juce::File::getSpecialLocation(juce::File::SpecialLocationType::tempDirectory)))
                           .withNativeIntegrationEnabled()
-                          .withResourceProvider([this](const auto &url) { return getResource(url); },juce::URL{LOCAL_DEV_SERVER_ADDRESS}.getOrigin())
+                          .withResourceProvider([](const auto &url) { return getResource(url); },juce::URL{LOCAL_DEV_SERVER_ADDRESS}.getOrigin())
                           .withOptionsFrom(modelOrderRelay)
                           .withOptionsFrom(passthroughRelay)
                           .withOptionsFrom(shiftVoice1Relay)
@@ -122,7 +122,7 @@ MyAudioProcessorEditor::~MyAudioProcessorEditor() { }
 
 //==============================================================================
 
-auto MyAudioProcessorEditor::getResource(const juce::String& url) const -> std::optional<Resource> {
+auto MyAudioProcessorEditor::getResource(const juce::String& url) -> std::optional<Resource> {
     static const auto resourceFileRoot = juce::File{"C:/MyFilesDontDelete/project/MyAudioPlugin/GUI/public"};
 //    static const auto resourceFileRoot = juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentApplicationFile)
 //                    .getChildFile("public");

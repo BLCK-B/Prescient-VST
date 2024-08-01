@@ -6,7 +6,7 @@ using namespace std::chrono;
 
 // constructor
 LPCeffect::LPCeffect(const int sampleRate) {
-//    shiftEffect = new ShiftEffect(sampleRate);
+    shiftEffect = new ShiftEffect(sampleRate);
     if (sampleRate < 44100) {
         windowSize = 1024;
         windowSizeEnum = WindowSizeEnum::S;
@@ -32,7 +32,8 @@ LPCeffect::LPCeffect(const int sampleRate) {
 }
 
 // add received samples to buffers, process once buffer full
-float LPCeffect::sendSample(float carrierSample, float voiceSample, const ChainSettings& chainSettings) {
+float LPCeffect::sendSample(float carrierSample, float voiceSample, float modelOrder, float shiftVoice1,
+                            float shiftVoice2, float shiftVoice3, bool enableLPC, float passthrough) {
     carrierBuffer1[index1] = carrierSample;
     sideChainBuffer1[index1] = voiceSample;
     if (index2 >= hopSize & overlap != 0) {
@@ -43,12 +44,12 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, const ChainS
     ++index2;
     if (index1 == windowSize) {
         index1 = 0;
-        processing(filteredBuffer1, sideChainBuffer1, carrierBuffer1, chainSettings);
-        frameModelOrder = static_cast<int>(chainSettings.modelorder);
+        processing(filteredBuffer1, sideChainBuffer1, carrierBuffer1, shiftVoice1, shiftVoice2, shiftVoice3, enableLPC, passthrough);
+        frameModelOrder = static_cast<int>(modelOrder);
     }
     else if (index2 == hopSize + windowSize && overlap != 0) {
         index2 = hopSize;
-        processing(filteredBuffer2, sideChainBuffer2, carrierBuffer2, chainSettings);
+        processing(filteredBuffer2, sideChainBuffer2, carrierBuffer2, shiftVoice1, shiftVoice2, shiftVoice3, enableLPC, passthrough);
     }
     float output = filteredBuffer1[index1];
     if (index2 >= hopSize & overlap != 0)
@@ -56,23 +57,24 @@ float LPCeffect::sendSample(float carrierSample, float voiceSample, const ChainS
     return output;
 }
 
-void LPCeffect::processing(univector<float>& toOverwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings) {
+void LPCeffect::processing(univector<float>& toOverwrite, const univector<float>& voice, const univector<float>& carrier,
+                           float shiftVoice1,  float shiftVoice2, float shiftVoice3, bool enableLPC, float passthrough) {
     univector<float> result = voice;
 
-//    if (chainSettings.shiftVoice1 > 1.01 || chainSettings.shiftVoice1 < 0.99)
-//        result = shiftEffect -> shiftSignal(result, chainSettings.shiftVoice1);
-//    if (chainSettings.shiftVoice2 > 1.01 || chainSettings.shiftVoice2 < 0.99)
-//        result += shiftEffect -> shiftSignal(voice, chainSettings.shiftVoice2);
-//    if (chainSettings.shiftVoice3 > 1.01  || chainSettings.shiftVoice3 < 0.99)
-//        result += shiftEffect -> shiftSignal(voice, chainSettings.shiftVoice3);
-//    matchPower(result, voice);
+    if (shiftVoice1 > 1.03 || shiftVoice1 < 0.96)
+        result = shiftEffect -> shiftSignal(result, shiftVoice1);
+    if (shiftVoice2 > 1.03 || shiftVoice2 < 0.96)
+        result += shiftEffect -> shiftSignal(voice, shiftVoice2);
+    if (shiftVoice3 > 1.03  || shiftVoice3 < 0.96)
+        result += shiftEffect -> shiftSignal(voice, shiftVoice3);
+    matchPower(result, voice);
 
-    if (chainSettings.enableLPC > 0.99) {
+    if (enableLPC) {
         result = processLPC(result, carrier);
         matchPower(result, voice);
     }
-    if (chainSettings.passthrough > 0.05) {
-        result += mul(voice, chainSettings.passthrough);
+    if (passthrough > 0.05) {
+        result += mul(voice, passthrough);
         matchPower(result, voice);
     }
     std::memcpy(toOverwrite.data(), result.data(), result.size() * sizeof(float));

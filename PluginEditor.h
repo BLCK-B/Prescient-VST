@@ -1,3 +1,4 @@
+#pragma once
 #include "PluginProcessor.h"
 //==============================================================================
 class MyAudioProcessorEditor final : public juce::AudioProcessorEditor
@@ -10,7 +11,7 @@ public:
     void resized() override;
 private:
     using Resource = juce::WebBrowserComponent::Resource;
-    std::optional<Resource> getResource(const juce::String& url) const;
+    static std::optional<Resource> getResource(const juce::String& url) ;
 
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

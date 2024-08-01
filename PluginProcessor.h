@@ -4,7 +4,6 @@
 #include <juce_dsp/juce_dsp.h>
 #include "LPCeffect.h"
 //==============================================================================
-//this class inherits from AudioProcessor and a valuetreestate listener
 class MyAudioProcessor final : public juce::AudioProcessor, juce::AudioProcessorValueTreeState::Listener {
 public:
     MyAudioProcessor();
@@ -40,7 +39,6 @@ public:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState treeState;
 
-    ChainSettings getChainSettings();
 private:
     std::atomic<float>* modelOrder{nullptr};
     std::atomic<float>* passthrough{nullptr};
@@ -58,8 +56,6 @@ private:
         updateCoefficients(chain.template get<Index>().coefficients, coefficients[Index]);
         chain.template setBypassed<Index>(false);
     }
-
-    ChainSettings chainSettings;
 
     LPCeffect lpcEffect[2] = {
             LPCeffect(static_cast<int>(getSampleRate())),

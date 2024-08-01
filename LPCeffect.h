@@ -2,16 +2,9 @@
 #include <kfr/base.hpp>
 #include <kfr/dft.hpp>
 #include <kfr/dsp.hpp>
-//#include "ShiftEffect.cpp"
+#include "ShiftEffect.cpp"
 
-#ifndef AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
-#define AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
-#endif //AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
 using namespace kfr;
-
-struct ChainSettings {
-    float modelorder{70}, passthrough {0}, shiftVoice1 {1}, shiftVoice2 {1}, shiftVoice3 {1}, monostereo {1}, enableLPC {1};
-};
 
 class LPCeffect {
 public:
@@ -19,7 +12,7 @@ public:
     [[nodiscard]] int getLatency() const {
         return windowSize;
     }
-    float sendSample(float carrierSample, float voiceSample, const ChainSettings& chainSettings);
+    float sendSample(float carrierSample, float voiceSample, float modelOrder, float shiftVoice1,  float shiftVoice2, float shiftVoice3, bool enableLPC, float passthrough);
 
 private:
     enum class FFToperation {
@@ -27,7 +20,7 @@ private:
     };
 
     univector<float> processLPC(const univector<float>& voice, const univector<float>& carrier);
-    void processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings);
+    void processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, float shiftVoice1,  float shiftVoice2, float shiftVoice3, bool enableLPC, float passthrough);
 
     univector<float> FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients);
     static univector<float> autocorrelation(const univector<float>& fromBufer);
@@ -73,5 +66,5 @@ private:
     univector<float> filteredBuffer1;
     univector<float> filteredBuffer2;
 
-//    ShiftEffect* shiftEffect;
+    ShiftEffect* shiftEffect;
 };

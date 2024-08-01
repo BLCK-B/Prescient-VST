@@ -21,17 +21,6 @@ MyAudioProcessor::MyAudioProcessor() :
 
 MyAudioProcessor::~MyAudioProcessor() { }
 
-ChainSettings MyAudioProcessor::getChainSettings() {
-    ChainSettings settings;
-    settings.passthrough = *treeState.getRawParameterValue("passthrough");
-    settings.shiftVoice1 = *treeState.getRawParameterValue("shiftVoice1");
-    settings.shiftVoice2 = *treeState.getRawParameterValue("shiftVoice2");
-    settings.shiftVoice3 = *treeState.getRawParameterValue("shiftVoice3");
-    settings.enableLPC = *treeState.getRawParameterValue("enableLPC");
-    settings.monostereo = *treeState.getRawParameterValue("monostereo");
-    return settings;
-}
-
 //defining parameters of the plugin
 juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createParameterLayout() {
     using namespace juce;
@@ -105,15 +94,7 @@ void MyAudioProcessor::changeProgramName (int index, const juce::String& newName
     juce::ignoreUnused (index, newName);
 }
 
-//on init
-void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
-{
-    chainSettings.modelorder = 70;
-    chainSettings.shiftVoice1 = 1.f;
-    chainSettings.shiftVoice2 = 1.f;
-    chainSettings.shiftVoice3 = 1.f;
-    chainSettings.enableLPC = 0.f;
-    chainSettings.monostereo = 1.f;
+void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock) {
     setLatencySamples(lpcEffect[0].getLatency());
     juce::ignoreUnused (sampleRate, samplesPerBlock);
     juce::dsp::ProcessSpec spec{};
@@ -155,22 +136,20 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
         // standalone cant use these pointers
-//        float sampleSideChainL = sideChain.getReadPointer(0)[sample];
-//        float sampleSideChainR = sideChain.getReadPointer(1)[sample];
-        float sampleSideChainL = 0;
-        float sampleSideChainR = 0;
+        float sampleSideChainL = sideChain.getReadPointer(0)[sample];
+        float sampleSideChainR = sideChain.getReadPointer(1)[sample];
+//        float sampleSideChainL = 0;
+//        float sampleSideChainR = 0;
         //==============================================
-        sampleL = sampleR = rand() % 1000 / 1000.0;
+//        sampleL = sampleR = rand() % 1000 / 1000.0;
 //        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 
-        ChainSettings params = getChainSettings();
+        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, *modelOrder,
+                                          *shiftVoice1, *shiftVoice2, *shiftVoice3, *enableLPC > 0.99, *passthrough);
+        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, *modelOrder,
+                                          *shiftVoice1, *shiftVoice2, *shiftVoice3, *enableLPC > 0.99, *passthrough);
 
-        std::cout<<params.enableLPC<<"\n";
-
-        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, params);
-        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, params);
-
-        float width = chainSettings.monostereo;
+        float width = *monostereo;
         auto sideNew = width * 0.5 * (sampleL - sampleR);
         auto midNew = (2 - width) * 0.5 * (sampleL + sampleR);
         sampleL = static_cast<float>(midNew + sideNew);
