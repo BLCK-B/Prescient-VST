@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.26)
 
 # optimized build
-set(CMAKE_BUILD_TYPE "Release")
+#set(CMAKE_BUILD_TYPE "Release")
+
+set(CMAKE_CXX_STANDARD 20)
 
 project(AUDIO_PLUGIN_EXAMPLE VERSION 0.0.1)
 
@@ -102,6 +104,8 @@ target_compile_definitions(AudioPluginExample
 # linked automatically. If we'd generated a binary data target above, we would need to link to it
 # here too. This is a standard CMake command.
 
+target_link_libraries(AudioPluginExample PUBLIC kfr kfr_dsp kfr_dft)
+
 target_link_libraries(AudioPluginExample
         PRIVATE
         juce::juce_audio_utils
@@ -111,5 +115,3 @@ target_link_libraries(AudioPluginExample
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
-
-target_link_libraries(AudioPluginExample PUBLIC kfr kfr_dsp kfr_dft)

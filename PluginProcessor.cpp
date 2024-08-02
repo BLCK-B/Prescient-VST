@@ -95,7 +95,7 @@ void MyAudioProcessor::changeProgramName (int index, const juce::String& newName
 }
 
 void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock) {
-    setLatencySamples(lpcEffect[0].getLatency());
+//    setLatencySamples(lpcEffect[0].getLatency());
     juce::ignoreUnused (sampleRate, samplesPerBlock);
     juce::dsp::ProcessSpec spec{};
     spec.maximumBlockSize = samplesPerBlock;
