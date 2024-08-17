@@ -4,23 +4,15 @@
 #include <kfr/dsp.hpp>
 #include "ShiftEffect.cpp"
 
-#ifndef AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
-#define AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
-#endif //AUDIO_PLUGIN_EXAMPLE_LPCEFFECT_H
 using namespace kfr;
-
-struct ChainSettings {
-    float modelorder{70}, passthrough {0}, shift {1}, voice2 {1}, voice3 {1}, monostereo {1};
-    bool enableLPC {false};
-};
 
 class LPCeffect {
 public:
-    LPCeffect();
+    explicit LPCeffect(const int sampleRate);
     [[nodiscard]] int getLatency() const {
         return windowSize;
     }
-    float sendSample(float carrierSample, float voiceSample, const ChainSettings& chainSettings);
+    float sendSample(float carrierSample, float voiceSample, float modelOrder, float shiftVoice1,  float shiftVoice2, float shiftVoice3, bool enableLPC, float passthrough);
 
 private:
     enum class FFToperation {
@@ -28,32 +20,42 @@ private:
     };
 
     univector<float> processLPC(const univector<float>& voice, const univector<float>& carrier);
-    void processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, const ChainSettings& chainSettings);
+    void processing(univector<float>& overwrite, const univector<float>& voice, const univector<float>& carrier, float shiftVoice1,  float shiftVoice2, float shiftVoice3, bool enableLPC, float passthrough);
 
     univector<float> FFToperations(FFToperation o, const univector<float>& inputBuffer, const univector<float>& coefficients);
-    univector<float> autocorrelation(const univector<float>& fromBufer, bool saveFFT);
+    static univector<float> autocorrelation(const univector<float>& fromBufer);
     [[nodiscard]] univector<float> levinsonDurbin(const univector<float>& ofBuffer) const;
     univector<float> getResiduals(const univector<float>& ofBuffer);
 
-    static void normalise(univector<float>& input);
     void matchPower(univector<float>& input, const univector<float>& reference) const;
 
     static void mulVectorWith(univector<float>& vec1, const univector<float>& vec2);
     static void mulVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2);
     static void divVectorWith(univector<std::complex<float>>& vec1, const univector<std::complex<float>>& vec2);
 
-//    const int windowSize = 8192;
-//    const int windowSize = 4096;
-    const int windowSize = 2048;
-//    const int windowSize = 1024;
-    univector<fbase, 2048> hannWindow = window_hann(2048);
+    int windowSize = 0;
 
-    int index = 0;
+    univector<fbase, 1024> hannWindowS = window_hann(1024);
+    univector<fbase, 2048> hannWindowM = window_hann(2048);
+    univector<fbase, 4096> hannWindowL = window_hann(4096);
+
+    enum class WindowSizeEnum {
+        S, M, L
+    };
+    WindowSizeEnum windowSizeEnum;
+
+    std::unordered_map<WindowSizeEnum, univector<fbase>> hannWindow = {
+            {WindowSizeEnum::S, hannWindowS},
+            {WindowSizeEnum::M, hannWindowM},
+            {WindowSizeEnum::L, hannWindowL}
+    };
+
+    int index1 = 0;
     int index2 = 0;
 
     const float overlap = 0.5;
-    const int overlapSize = round(windowSize * overlap);
-    const int hopSize = windowSize - overlapSize;
+    int overlapSize = 0;
+    int hopSize = 0;
 
     int frameModelOrder = 70;
 
@@ -64,5 +66,5 @@ private:
     univector<float> filteredBuffer1;
     univector<float> filteredBuffer2;
 
-    ShiftEffect shiftEffect;
+    ShiftEffect* shiftEffect;
 };

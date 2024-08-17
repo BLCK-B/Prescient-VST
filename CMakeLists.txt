@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.26)
 # optimized build
 set(CMAKE_BUILD_TYPE "Release")
 
+set(CMAKE_CXX_STANDARD 20)
+
 project(AUDIO_PLUGIN_EXAMPLE VERSION 0.0.1)
 
 add_subdirectory("C:/JUCE" JUCE)
@@ -22,6 +24,17 @@ add_subdirectory(kfr)
 # the formats specified by the FORMATS arguments. This function accepts many optional arguments.
 # Check the readme at `docs/CMake API.md` in the JUCE repo for the full list.
 
+set(NUGET_EXE "C:/MyFilesDontDelete/project/MyAudioPlugin/nuget.exe")
+if(MSVC)
+    find_program(NUGET_EXE NAMES nuget)
+    if(NOT NUGET_EXE)
+        message(FATAL_ERROR "Install NUGET.EXE and run CMake again.")
+    endif()
+    execute_process(COMMAND ${NUGET_EXE} install "Microsoft.Web.WebView2" -OutputDirectory ${CMAKE_BINARY_DIR}/packages)
+    set(WebView2_DIR ${CMAKE_BINARY_DIR}/packages/Microsoft.Web.WebView2)
+    set(JUCE_WEBVIEW2_PACKAGE_LOCATION "${CMAKE_BINARY_DIR}/packages")
+endif()
+
 juce_add_plugin(AudioPluginExample
         # VERSION ...                               # Set this if the plugin version is different to the project version
         # ICON_BIG ...                              # ICON_* arguments specify a path to an image file to use as an icon for the Standalone
@@ -35,9 +48,11 @@ juce_add_plugin(AudioPluginExample
         COPY_PLUGIN_AFTER_BUILD TRUE/FALSE          # Should the plugin be installed to a default location after building?
         PLUGIN_MANUFACTURER_CODE Juce               # A four-character manufacturer id with at least one upper-case character
         PLUGIN_CODE Dem0                            # A unique four-character plugin id with exactly one upper-case character
-        # GarageBand 10.3 requires the first letter to be upper-case, and the remaining letters to be lower-case
+                                                    # GarageBand 10.3 requires the first letter to be upper-case, and the remaining letters to be lower-case
         FORMATS AU VST3 Standalone                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
-        PRODUCT_NAME "learningPugin")        # The name of the final executable, which can differ from the target name
+        PRODUCT_NAME "learningPugin"                # The name of the final executable, which can differ from the target name
+        NEEDS_WEBVIEW2 TRUE
+)
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
 # into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
@@ -67,9 +82,12 @@ target_sources(AudioPluginExample
 target_compile_definitions(AudioPluginExample
         PUBLIC
         # JUCE_WEB_BROWSER and JUCE_USE_CURL would be on by default, but you might not need them.
-        JUCE_WEB_BROWSER=0  # If you remove this, add `NEEDS_WEB_BROWSER TRUE` to the `juce_add_plugin` call
+        JUCE_WEB_BROWSER=1  # If you remove this, add `NEEDS_WEB_BROWSER TRUE` to the `juce_add_plugin` call
         JUCE_USE_CURL=0     # If you remove this, add `NEEDS_CURL TRUE` to the `juce_add_plugin` call
-        JUCE_VST3_CAN_REPLACE_VST2=0)
+        JUCE_VST3_CAN_REPLACE_VST2=0
+        JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1
+)
+
 
 # If your target needs extra binary assets, you can add them here. The first argument is the name of
 # a new static library target that will include all the binary resources. There is an optional
@@ -86,6 +104,8 @@ target_compile_definitions(AudioPluginExample
 # linked automatically. If we'd generated a binary data target above, we would need to link to it
 # here too. This is a standard CMake command.
 
+target_link_libraries(AudioPluginExample PUBLIC kfr kfr_dsp kfr_dft)
+
 target_link_libraries(AudioPluginExample
         PRIVATE
         juce::juce_audio_utils
@@ -95,5 +115,3 @@ target_link_libraries(AudioPluginExample
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
-
-target_link_libraries(AudioPluginExample PUBLIC kfr kfr_dsp kfr_dft)

@@ -1,17 +1,31 @@
 #include "ShiftEffect.h"
 
-ShiftEffect::ShiftEffect():
-    psi(LEN, 0.f),
-    ramp(LEN, 0.f),
-    omega(LEN, 0.f),
-    fftGrain(LEN / 2 + 1, 0.f),
-    phi(LEN, 0.f),
-    previousPhi(LEN, 0.f),
-    delta(LEN, 0.f),
-    f1(LEN, 0.f),
-    corrected(LEN, 0.f)
-{
+ShiftEffect::ShiftEffect(const int sampleRate) {
+    if (sampleRate < 44100) {
+        LEN = 512;
+        synthesisHop = 150;
+        windowLenEnum = WindowLenEnum::S;
+    }
+    else if (44100 < sampleRate && sampleRate < 88200) {
+        LEN = 1024;
+        synthesisHop = 250;
+        windowLenEnum = WindowLenEnum::M;
+    }
+    else {
+        LEN = 2048;
+        synthesisHop = 350;
+        windowLenEnum = WindowLenEnum::L;
+    }
     jassert(LEN % 2 == 0);
+    psi.resize(LEN, 0.f);
+    ramp.resize(LEN, 0.f);
+    omega.resize(LEN, 0.f);
+    fftGrain.resize(LEN / 2 + 1, 0.f);
+    phi.resize(LEN, 0.f);
+    previousPhi.resize(LEN, 0.f);
+    delta.resize(LEN, 0.f);
+    f1.resize(LEN, 0.f);
+    corrected.resize(LEN, 0.f);
 }
 
 univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float shift) {
@@ -36,7 +50,7 @@ univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float s
     int endCycle = std::floor(input.size() - std::max(LEN, ramp[LEN - 1]));
     for (int anCycle = 0; anCycle < endCycle; anCycle += analysisHop) {
         std::copy(input.begin() + anCycle, input.begin() + anCycle + LEN, grain.begin());
-        mulVectorWith(grain, hannWindow);
+        mulVectorWith(grain, hannWindow[windowLenEnum]);
         fftGrain = padFFT(grain);
 
         // phase information: output psi
@@ -46,13 +60,13 @@ univector<float> ShiftEffect::shiftSignal(const univector<float>& input, float s
         previousPhi = phi;
 
         // shifting: output correction factor
-        f1 = absOf(padFFT(mul(input[anCycle], hannWindow)) / LEN);
+        f1 = absOf(padFFT(mul(input[anCycle], hannWindow[windowLenEnum])) / LEN);
         corrected = mul(absOf(fftGrain), std::exp(cutIFFT(f1 - fftGrain)[0]));
         mulVectorWith(corrected, expComplex(makeComplex(psi)));
 
-        // interpolation
+        // overlap
         grain = real(cutIFFT(corrected));
-        mulVectorWith(grain, hannWindow);
+        mulVectorWith(grain, hannWindow[windowLenEnum]);
         for (int ai = anCycle; ai < anCycle + resampledLEN; ++ai)
             overLapOut[ai] += grain[std::floor(x[ai - anCycle]) - 1];
     }

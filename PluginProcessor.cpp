@@ -1,7 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "LPCeffect.cpp"
-#include "LPCtests.cpp"
 
 //==============================================================================
 MyAudioProcessor::MyAudioProcessor() :
@@ -9,63 +8,46 @@ MyAudioProcessor::MyAudioProcessor() :
         .withInput("Input",  juce::AudioChannelSet::stereo(), true)
         .withInput("Sidechain",  juce::AudioChannelSet::stereo(), true)
         .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-        )
-{
-    treeState.addParameterListener("model order", this);
-    treeState.addParameterListener("passthrough", this);
-    treeState.addParameterListener("enableLPC", this);
-    treeState.addParameterListener("shift", this);
-    treeState.addParameterListener("voice2", this);
-    treeState.addParameterListener("voice3", this);
-    treeState.addParameterListener("monostereo", this);
-}
+    ),
+    treeState{*this, nullptr, "PARAMETERS", createParameterLayout()},
+    modelOrder{treeState.getRawParameterValue("model order")},
+    passthrough{treeState.getRawParameterValue("passthrough")},
+    shiftVoice1{treeState.getRawParameterValue("shiftVoice1")},
+    shiftVoice2{treeState.getRawParameterValue("shiftVoice2")},
+    shiftVoice3{treeState.getRawParameterValue("shiftVoice3")},
+    monostereo{treeState.getRawParameterValue("monostereo")},
+    enableLPC{treeState.getRawParameterValue("enableLPC")}
+{ }
 
-MyAudioProcessor::~MyAudioProcessor()
-{
-}
-
-ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& treeState) {
-    ChainSettings settings;
-    settings.modelorder = treeState.getRawParameterValue("model order")->load();
-    settings.passthrough = treeState.getRawParameterValue("passthrough")->load();
-    settings.shift = treeState.getRawParameterValue("shift")->load();
-    settings.enableLPC = treeState.getRawParameterValue("enableLPC")->load();
-    settings.voice2 = treeState.getRawParameterValue("voice2")->load();
-    settings.voice3 = treeState.getRawParameterValue("voice3")->load();
-    settings.monostereo = treeState.getRawParameterValue("monostereo")->load();
-    return settings;
-}
+MyAudioProcessor::~MyAudioProcessor() { }
 
 //defining parameters of the plugin
-juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createParameterLayout()
-{
-    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createParameterLayout() {
+    using namespace juce;
+    AudioProcessorValueTreeState::ParameterLayout layout;
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("model order", "model order",
-           juce::NormalisableRange<float>(5.f, 125.f, 5.f, 1.f), 70.f));
+    layout.add(std::make_unique<AudioParameterFloat>("model order", "model order",
+           NormalisableRange<float>(6.f, 76.f, 1.f, 1.f), 76.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("passthrough", "passthrough",
-           juce::NormalisableRange<float>(0.f, 2.f, 0.1f, 1.f), 0.f));
+    layout.add(std::make_unique<AudioParameterFloat>("passthrough", "passthrough",
+           NormalisableRange<float>(0.f, 1.f, 0.1f, 1.f), 1.f));
 
-    layout.add(std::make_unique<juce::AudioParameterBool>("enableLPC", "enableLPC", false));
+    layout.add(std::make_unique<AudioParameterFloat>("enableLPC", "enableLPC",
+            NormalisableRange<float>(0.f, 1.f, 1.f, 1.f), 0.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("shift", "shift",
-           juce::NormalisableRange<float>(0.55f, 2.f, 0.01f, 1.f), 1.f));
+    layout.add(std::make_unique<AudioParameterFloat>("shiftVoice1", "shiftVoice1",
+           NormalisableRange<float>(0.6f, 2.f, 0.01f, 0.55f), 1.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("voice2", "voice2",
-            juce::NormalisableRange<float>(0.55f, 2.f, 0.01f, 1.f), 1.f));
+    layout.add(std::make_unique<AudioParameterFloat>("shiftVoice2", "shiftVoice2",
+            NormalisableRange<float>(0.6f, 2.f, 0.01f, 0.55f), 1.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("voice3", "voice3",
-            juce::NormalisableRange<float>(0.55f, 2.f, 0.01f, 1.f), 1.f));
+    layout.add(std::make_unique<AudioParameterFloat>("shiftVoice3", "shiftVoice3",
+            NormalisableRange<float>(0.6f, 2.f, 0.01f, 0.55f), 1.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("monostereo", "monostereo",
-           juce::NormalisableRange<float>(0.f, 1.f, 0.01f, 1.f), 1.f));
+    layout.add(std::make_unique<AudioParameterFloat>("monostereo", "monostereo",
+           NormalisableRange<float>(0.f, 1.f, 0.01f, 1.f), 0.5f));
 
     return layout;
-}
-//listener for parameterID change
-void MyAudioProcessor::parameterChanged(const juce::String& parameterID, float newValue) {
-    chainSettings = getChainSettings(treeState);
 }
 
 //==============================================================================
@@ -110,28 +92,13 @@ void MyAudioProcessor::changeProgramName (int index, const juce::String& newName
     juce::ignoreUnused (index, newName);
 }
 
-//on init
-void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
-{
-    chainSettings.modelorder = 70;
-    chainSettings.shift = 1.f;
-    chainSettings.voice2 = 1.f;
-    chainSettings.voice3 = 1.f;
-    chainSettings.enableLPC = false;
-    chainSettings.monostereo = 1.f;
-    setLatencySamples(lpcEffect[0].getLatency());
+void MyAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock) {
+//    setLatencySamples(lpcEffect[0].getLatency());
     juce::ignoreUnused (sampleRate, samplesPerBlock);
     juce::dsp::ProcessSpec spec{};
     spec.maximumBlockSize = samplesPerBlock;
     spec.numChannels = 2;
     spec.sampleRate = sampleRate;
-
-//    LPCtests lpCtests;
-
-//    lpCtests.levinsonDurbinTest();
-//    lpCtests.IIRfilterTest();
-//    lpCtests.convolutionFFT();
-//    lpCtests.shiftSignalTest();
 }
 
 void MyAudioProcessor::releaseResources() {
@@ -166,23 +133,23 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
+        // standalone cant use these pointers
         float sampleSideChainL = sideChain.getReadPointer(0)[sample];
         float sampleSideChainR = sideChain.getReadPointer(1)[sample];
 //        float sampleSideChainL = 0;
 //        float sampleSideChainR = 0;
+        //==============================================
 
-        // LPC
-//        sampleL = sampleR = rand() % 1000 / 1000.0;
-//        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
+        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, *modelOrder,
+                                          *shiftVoice1, *shiftVoice2, *shiftVoice3, *enableLPC > 0.99, *passthrough);
+        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, *modelOrder,
+                                          *shiftVoice1, *shiftVoice2, *shiftVoice3, *enableLPC > 0.99, *passthrough);
 
-        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, chainSettings);
-        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, chainSettings);
-
-        float width = chainSettings.monostereo;
-        float sideNew = width * 0.5 * (sampleL - sampleR);
-        float midNew = (2 - width) * 0.5 * (sampleL + sampleR);
-        sampleL = (midNew + sideNew);
-        sampleR = (midNew - sideNew);
+        float width = *monostereo;
+        auto sideNew = width * 0.5 * (sampleL - sampleR);
+        auto midNew = (2 - width) * 0.5 * (sampleL + sampleR);
+        sampleL = static_cast<float>(midNew + sideNew);
+        sampleR = static_cast<float>(midNew - sideNew);
 
         channelL[sample] = sampleL;
         channelR[sample] = sampleR;
@@ -191,13 +158,13 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
 //==============================================================================
 bool MyAudioProcessor::hasEditor() const {
-    return true; //change this to false if you choose to not supply an editor
+    return true; // false if you choose to not supply an editor
 }
 
 juce::AudioProcessorEditor* MyAudioProcessor::createEditor() {
-    //return new MyAudioProcessorEditor (*this);
+    return new MyAudioProcessorEditor (*this);
     //generic UI:
-    return new juce::GenericAudioProcessorEditor(*this);
+//    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
