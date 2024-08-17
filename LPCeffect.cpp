@@ -74,10 +74,7 @@ void LPCeffect::processing(univector<float>& toOverwrite, const univector<float>
         matchPower(result, voice);
     }
 
-    if (passthrough <= 0.99) {
-        result = passthrough * result + mul(voice, 1 - passthrough);
-        matchPower(result, voice);
-    }
+    result = mul(result, passthrough) + mul(voice, 1 - passthrough);
 
     std::memcpy(toOverwrite.data(), result.data(), result.size() * sizeof(float));
 }
