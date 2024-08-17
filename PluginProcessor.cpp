@@ -10,8 +10,8 @@ MyAudioProcessor::MyAudioProcessor() :
         .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
     ),
     treeState{*this, nullptr, "PARAMETERS", createParameterLayout()},
-    passthrough{treeState.getRawParameterValue("passthrough")},
     modelOrder{treeState.getRawParameterValue("model order")},
+    passthrough{treeState.getRawParameterValue("passthrough")},
     shiftVoice1{treeState.getRawParameterValue("shiftVoice1")},
     shiftVoice2{treeState.getRawParameterValue("shiftVoice2")},
     shiftVoice3{treeState.getRawParameterValue("shiftVoice3")},
@@ -27,30 +27,28 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
     AudioProcessorValueTreeState::ParameterLayout layout;
 
     layout.add(std::make_unique<AudioParameterFloat>("model order", "model order",
-           NormalisableRange<float>(6.f, 76.f, 1.f, 1.f), 38.f));
+           NormalisableRange<float>(6.f, 76.f, 1.f, 1.f), 76.f));
 
     layout.add(std::make_unique<AudioParameterFloat>("passthrough", "passthrough",
-           NormalisableRange<float>(0.f, 1.f, 0.1f, 1.f), 0.f));
+           NormalisableRange<float>(0.f, 1.f, 0.1f, 1.f), 1.f));
 
     layout.add(std::make_unique<AudioParameterFloat>("enableLPC", "enableLPC",
             NormalisableRange<float>(0.f, 1.f, 1.f, 1.f), 0.f));
 
     layout.add(std::make_unique<AudioParameterFloat>("shiftVoice1", "shiftVoice1",
-           NormalisableRange<float>(0.6f, 2.f, 0.01f, 1.f), 1.f));
+           NormalisableRange<float>(0.6f, 2.f, 0.01f, 0.55f), 1.f));
 
     layout.add(std::make_unique<AudioParameterFloat>("shiftVoice2", "shiftVoice2",
-            NormalisableRange<float>(0.6f, 2.f, 0.01f, 1.f), 1.f));
+            NormalisableRange<float>(0.6f, 2.f, 0.01f, 0.55f), 1.f));
 
     layout.add(std::make_unique<AudioParameterFloat>("shiftVoice3", "shiftVoice3",
-            NormalisableRange<float>(0.6f, 2.f, 0.01f, 1.f), 1.f));
+            NormalisableRange<float>(0.6f, 2.f, 0.01f, 0.55f), 1.f));
 
     layout.add(std::make_unique<AudioParameterFloat>("monostereo", "monostereo",
-           NormalisableRange<float>(0.f, 1.f, 0.01f, 1.f), 1.f));
+           NormalisableRange<float>(0.f, 1.f, 0.01f, 1.f), 0.5f));
 
     return layout;
 }
-
-void MyAudioProcessor::parameterChanged(const juce::String& parameterID, float newValue) { }
 
 //==============================================================================
 const juce::String MyAudioProcessor::getName() const {
@@ -141,8 +139,6 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 //        float sampleSideChainL = 0;
 //        float sampleSideChainR = 0;
         //==============================================
-//        sampleL = sampleR = rand() % 1000 / 1000.0;
-//        sampleSideChainL = sampleSideChainR = rand() % 1000 / 1000.0;
 
         sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, *modelOrder,
                                           *shiftVoice1, *shiftVoice2, *shiftVoice3, *enableLPC > 0.99, *passthrough);

@@ -1,24 +1,29 @@
 <template>
   <div class="knob-container">
     <div
-      class="knob"
-      @mousedown="startDragging"
-      @wheel.prevent="handleScroll"
-      @dblclick="resetToDefault"
+        class="knob"
+        @mousedown="startDragging"
+        @wheel.prevent="handleScroll"
+        @dblclick="resetToDefault"
     >
       <svg class="knob-svg" viewBox="0 0 100 100">
         <circle class="knob-bg" :class="{ knobInactive: value === 0 }" cx="50" cy="50" r="45" />
         <circle
-          class="knob-indicator"
-          cx="50"
-          cy="50"
-          r="45"
-          :stroke-dasharray="circumference"
-          :stroke-dashoffset="strokeOffset"
+            class="knob-indicator"
+            cx="50"
+            cy="50"
+            r="45"
+            :stroke-dasharray="circumference"
+            :stroke-dashoffset="strokeOffset"
         />
       </svg>
       <img class="knob-center-image" src="../components/icons/knobpic.png" alt="Knob Center" />
-      <!-- <div class="knob-value">{{ value }}</div> -->
+      <img
+          class="knob-center-image"
+          src="../components/icons/knobindicator.png"
+          alt="Knob Center"
+          :style="{ transform: 'translate(-50%, -50%) rotate(' + rotationAngle + 'deg)' }"
+      />
     </div>
     <div class="knobText">
       <p>{{ knobText }}</p>
@@ -50,6 +55,9 @@ export default {
   computed: {
     strokeOffset() {
       return this.circumference * (1 - this.value / 100)
+    },
+    rotationAngle() {
+      return this.value * 3.6 + 180
     }
   },
   watch: {
@@ -100,6 +108,7 @@ export default {
   transition: 0.03s;
   user-select: none;
 }
+
 .knob-container {
   display: flex;
   justify-content: center;

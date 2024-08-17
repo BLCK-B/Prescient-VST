@@ -4,7 +4,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include "LPCeffect.h"
 //==============================================================================
-class MyAudioProcessor final : public juce::AudioProcessor, juce::AudioProcessorValueTreeState::Listener {
+class MyAudioProcessor final : public juce::AudioProcessor {
 public:
     MyAudioProcessor();
     ~MyAudioProcessor() override;
@@ -42,14 +42,11 @@ public:
 private:
     std::atomic<float>* modelOrder{nullptr};
     std::atomic<float>* passthrough{nullptr};
-    std::atomic<float>* enableLPC{nullptr};
     std::atomic<float>* shiftVoice1{nullptr};
     std::atomic<float>* shiftVoice2{nullptr};
     std::atomic<float>* shiftVoice3{nullptr};
     std::atomic<float>* monostereo{nullptr};
-
-    //listener for parameter change
-    void parameterChanged(const juce::String& parameterID, float newValue) override;
+    std::atomic<float>* enableLPC{nullptr};
 
     template<int Index, typename ChainType, typename CoefficientType>
     void update(ChainType& chain, const CoefficientType& coefficients) {

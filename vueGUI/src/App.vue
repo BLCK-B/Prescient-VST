@@ -1,9 +1,9 @@
 <template>
   <div class="app">
     <div class="knobs">
-      <MyKnob class="knob" :default-val="50" knobText="Order" backendId="model order" />
-      <MyKnob class="knob" :default-val="100" knobText="Mono" backendId="monostereo" />
-      <MyKnob class="knob" :default-val="0" knobText="Dry / wet" backendId="passthrough" />
+      <MyKnob class="knob" :default-val="100" knobText="Order" backendId="model order" />
+      <MyKnob class="knob" :default-val="50" knobText="Mono / stereo" backendId="monostereo" />
+      <MyKnob class="knob" :default-val="100" knobText="Dry / wet" backendId="passthrough" />
       <MyKnobSplit class="knob" :default-val="0" knobText="Voice 1" backendId="shiftVoice1" />
       <MyKnobSplit class="knob" :default-val="0" knobText="Voice 2" backendId="shiftVoice2" />
       <MyKnobSplit class="knob" :default-val="0" knobText="Voice 3" backendId="shiftVoice3" />

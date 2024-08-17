@@ -61,11 +61,11 @@ void LPCeffect::processing(univector<float>& toOverwrite, const univector<float>
                            float shiftVoice1,  float shiftVoice2, float shiftVoice3, bool enableLPC, float passthrough) {
     univector<float> result = voice;
 
-    if (shiftVoice1 > 1.03 || shiftVoice1 < 0.96)
+    if (shiftVoice1 >= 1.01 || shiftVoice1 <= 0.99)
         result = shiftEffect -> shiftSignal(result, shiftVoice1);
-    if (shiftVoice2 > 1.03 || shiftVoice2 < 0.96)
+    if (shiftVoice2 >= 1.01 || shiftVoice2 <= 0.99)
         result += shiftEffect -> shiftSignal(voice, shiftVoice2);
-    if (shiftVoice3 > 1.03  || shiftVoice3 < 0.96)
+    if (shiftVoice3 >= 1.01  || shiftVoice3 <= 0.99)
         result += shiftEffect -> shiftSignal(voice, shiftVoice3);
     matchPower(result, voice);
 
@@ -73,10 +73,12 @@ void LPCeffect::processing(univector<float>& toOverwrite, const univector<float>
         result = processLPC(result, carrier);
         matchPower(result, voice);
     }
-    if (passthrough > 0.05) {
-        result += mul(voice, passthrough);
+
+    if (passthrough <= 0.99) {
+        result = passthrough * result + mul(voice, 1 - passthrough);
         matchPower(result, voice);
     }
+
     std::memcpy(toOverwrite.data(), result.data(), result.size() * sizeof(float));
 }
 
