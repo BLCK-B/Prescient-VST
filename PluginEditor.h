@@ -18,24 +18,25 @@ private:
     MyAudioProcessor& processorRef;
 
     juce::WebSliderRelay modelOrderRelay;
-    juce::WebSliderParameterAttachment modelOrderSliderAttachment;
     juce::WebSliderRelay passthroughRelay;
-    juce::WebSliderParameterAttachment passthroughSliderAttachment;
     juce::WebSliderRelay shiftVoice1Relay;
-    juce::WebSliderParameterAttachment shiftVoice1SliderAttachment;
     juce::WebSliderRelay shiftVoice2Relay;
-    juce::WebSliderParameterAttachment shiftVoice2SliderAttachment;
     juce::WebSliderRelay shiftVoice3Relay;
-    juce::WebSliderParameterAttachment shiftVoice3SliderAttachment;
     juce::WebSliderRelay monostereoRelay;
-    juce::WebSliderParameterAttachment monostereoSliderAttachment;
     juce::WebSliderRelay enableLPCRelay;
-    juce::WebSliderParameterAttachment enableLPCSliderAttachment;
 
     juce::WebBrowserComponent webView;
 
-    const juce::ParameterID passthrough{"passthrough", 1};
+    juce::WebSliderParameterAttachment modelOrderSliderAttachment;
+    juce::WebSliderParameterAttachment passthroughSliderAttachment;
+    juce::WebSliderParameterAttachment shiftVoice1SliderAttachment;
+    juce::WebSliderParameterAttachment shiftVoice2SliderAttachment;
+    juce::WebSliderParameterAttachment shiftVoice3SliderAttachment;
+    juce::WebSliderParameterAttachment monostereoSliderAttachment;
+    juce::WebSliderParameterAttachment enableLPCSliderAttachment;
+
     const juce::ParameterID modelOrder{"model order", 1};
+    const juce::ParameterID passthrough{"passthrough", 1};
     const juce::ParameterID shiftVoice1{"shiftVoice1", 1};
     const juce::ParameterID shiftVoice2{"shiftVoice2", 1};
     const juce::ParameterID shiftVoice3{"shiftVoice3", 1};
