@@ -36,7 +36,8 @@ export default {
     backendId: String
   },
   mounted() {
-    this.value = 0
+    const saved = localStorage.getItem(this.backendId)
+    this.value = saved !== null ? parseFloat(saved) : 0
   },
   data() {
     return {
@@ -55,6 +56,7 @@ export default {
       this.sendToBackend()
     },
     sendToBackend() {
+      localStorage.setItem(this.backendId, this.value);
       const sliderState = Juce.getSliderState(this.backendId)
       sliderState.setNormalisedValue(this.value / 100)
     }
