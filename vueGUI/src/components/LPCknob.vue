@@ -13,7 +13,7 @@
         />
       </svg>
       <img
-        v-if="this.value == 100"
+        v-if="this.value === 100"
         class="knob-center-image"
         src="../components/icons/lpcon.png"
         alt="Knob Center"
@@ -52,7 +52,7 @@ export default {
   },
   methods: {
     toggle() {
-      this.value = this.value == 100 ? 0 : 100
+      this.value = this.value === 100 ? 0 : 100
       this.sendToBackend()
     },
     sendToBackend() {
@@ -77,8 +77,8 @@ export default {
 
 .knob {
   position: relative;
-  width: 105px;
-  height: 105px;
+  width: 90px;
+  height: 90px;
   cursor: pointer;
 }
 
@@ -95,33 +95,16 @@ export default {
   stroke-width: 5;
 }
 
-.knobText {
-  position: relative;
-  color: black;
-  font-weight: bold;
-  top: 80px;
-}
-
 .knobInactive {
   stroke: #c7cbceff;
 }
 
 .knob-indicator {
   fill: none;
-  stroke: #fd6c00;
+  stroke: #ff8356;
   stroke-width: 5.5;
   stroke-linecap: round;
   stroke-dasharray: 282.74;
-}
-
-.knob-value {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 24px;
-  font-weight: bold;
-  color: black;
 }
 
 .knob-center-image {

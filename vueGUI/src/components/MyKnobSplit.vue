@@ -121,8 +121,8 @@ export default {
 
 .knob {
   position: relative;
-  width: 105px;
-  height: 105px;
+  width: 90px;
+  height: 90px;
   cursor: pointer;
 }
 
@@ -152,20 +152,10 @@ export default {
 
 .knob-indicator {
   fill: none;
-  stroke: #fd6c00;
+  stroke: #b956ff;
   stroke-width: 5.5;
   stroke-linecap: round;
   stroke-dasharray: 282.74;
-}
-
-.knob-value {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 24px;
-  font-weight: bold;
-  color: black;
 }
 
 .knob-center-image {
