@@ -65,6 +65,7 @@ export default {
   position: absolute;
   left: 40px;
   top: 30px;
-  width: 125px;
+  width: 140px;
+  opacity: 0.25;
 }
 </style>
