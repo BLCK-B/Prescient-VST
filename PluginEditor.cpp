@@ -114,7 +114,7 @@ MyAudioProcessorEditor::MyAudioProcessorEditor(MyAudioProcessor &p)
     webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
 
     setResizable(false, false);
-    setSize(630, 420);
+    setSize(610, 400);
 }
 
 MyAudioProcessorEditor::~MyAudioProcessorEditor() { }

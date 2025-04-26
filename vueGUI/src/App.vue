@@ -9,7 +9,7 @@
       <MyKnobSplit class="knob" :default-val="0" knobText="Voice 3" backendId="shiftVoice3" />
     </div>
     <LPCknob class="LPCknob" backendId="enableLPC" />
-    <img class="demotext" src="@/components/icons/demotext.png" />
+    <img class="artwork" src="@/components/icons/artwork.png" />
   </div>
 </template>
 
@@ -32,12 +32,13 @@ export default {
 * {
   font-size: 13px;
   user-select: none;
+  overflow: hidden;
 }
 .app {
   position: relative;
   background-color: #e1eaf3ff;
-  width: 630px;
-  height: 420px;
+  width: 610px;
+  height: 400px;
 }
 .knobs {
   position: absolute;
@@ -47,14 +48,17 @@ export default {
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(2, auto);
   gap: 0 42px;
+  z-index: 1;
 }
 .knob {
   margin-bottom: 65px;
+  overflow: visible;
 }
 .LPCknob {
   position: absolute;
-  left: 85px;
-  top: 133px;
+  left: 60px;
+  top: 115px;
+  z-index: 1;
 }
 .app {
   position: absolute;
@@ -62,11 +66,13 @@ export default {
   left: 0;
   background-color: #e1eaf3ff;
 }
-.demotext {
+.artwork {
   position: absolute;
-  left: 40px;
-  top: 30px;
-  width: 140px;
-  opacity: 0.25;
+  left: -220px;
+  top: -60px;
+  width: 180%;
+  z-index: 0;
+  transform: rotate(-40deg);
+  opacity: 0.7;
 }
 </style>
