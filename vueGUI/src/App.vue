@@ -1,7 +1,7 @@
 <template>
   <div class="app">
     <div class="knobs">
-      <MyKnob class="knob" :default-val="100" knobText="Order" backendId="model order" />
+      <MyKnob class="knob" :default-val="100" knobText="Order" backendId="modelOrder" />
       <MyKnob class="knob" :default-val="50" knobText="Mono / stereo" backendId="monostereo" />
       <MyKnob class="knob" :default-val="100" knobText="Dry / wet" backendId="passthrough" />
       <MyKnobSplit class="knob" :default-val="0" knobText="Voice 1" backendId="shiftVoice1" />
@@ -31,6 +31,7 @@ export default {
 <style scoped>
 * {
   font-size: 13px;
+  user-select: none;
 }
 .app {
   position: relative;

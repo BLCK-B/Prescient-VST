@@ -10,7 +10,7 @@ MyAudioProcessor::MyAudioProcessor() :
         .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
     ),
     treeState{*this, nullptr, "PARAMETERS", createParameterLayout()},
-    modelOrder{treeState.getRawParameterValue("model order")},
+    modelOrder{treeState.getRawParameterValue("modelOrder")},
     passthrough{treeState.getRawParameterValue("passthrough")},
     shiftVoice1{treeState.getRawParameterValue("shiftVoice1")},
     shiftVoice2{treeState.getRawParameterValue("shiftVoice2")},
@@ -26,7 +26,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout MyAudioProcessor::createPara
     using namespace juce;
     AudioProcessorValueTreeState::ParameterLayout layout;
 
-    layout.add(std::make_unique<AudioParameterFloat>("model order", "model order",
+    layout.add(std::make_unique<AudioParameterFloat>("modelOrder", "modelOrder",
            NormalisableRange<float>(6.f, 76.f, 1.f, 1.f), 76.f));
 
     layout.add(std::make_unique<AudioParameterFloat>("passthrough", "passthrough",
@@ -124,27 +124,37 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
     //=================================================================================
+    // pointers to acquite write access to audio busses and their channels
     auto mainInput = getBusBuffer (buffer, true, 0);
     auto sideChain = getBusBuffer (buffer, true, 1);
 
-    float* channelL = mainInput.getWritePointer(0);
-    float* channelR = mainInput.getWritePointer(1);
+    auto* channelL = mainInput.getWritePointer(0);
+    auto* channelR = mainInput.getWritePointer(1);
+    auto* sideChainL = sideChain.getReadPointer(0);
+    auto* sideChainR = sideChain.getReadPointer(1);
+//    float* sideChainL;
+//    float* sideChainR;
+
+    // disable processing if no input
+    bool isSilent = true;
+    for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
+        if (std::fabs(channelL[sample]) > 0.0001f || std::fabs(channelR[sample]) > 0.0001f) {
+            isSilent = false;
+            break;
+        }
+    }
+    if (isSilent)
+        return;
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
         float sampleL = channelL[sample];
         float sampleR = channelR[sample];
-        // standalone cant use these pointers
-        float sampleSideChainL = sideChain.getReadPointer(0)[sample];
-        float sampleSideChainR = sideChain.getReadPointer(1)[sample];
-//        float sampleSideChainL = 0;
-//        float sampleSideChainR = 0;
-        //==============================================
-
-        sampleL = lpcEffect[0].sendSample(sampleL, sampleSideChainL, *modelOrder,
+        // providing samples to effect chain and getting output in real-time
+        sampleL = lpcEffect[0].sendSample(sampleL, sideChainL[sample], *modelOrder,
                                           *shiftVoice1, *shiftVoice2, *shiftVoice3, *enableLPC > 0.99, *passthrough);
-        sampleR = lpcEffect[1].sendSample(sampleR, sampleSideChainR, *modelOrder,
+        sampleR = lpcEffect[1].sendSample(sampleR, sideChainR[sample], *modelOrder,
                                           *shiftVoice1, *shiftVoice2, *shiftVoice3, *enableLPC > 0.99, *passthrough);
-
+        // midside processing for stereo limiting
         float width = *monostereo;
         auto sideNew = width * 0.5 * (sampleL - sampleR);
         auto midNew = (2 - width) * 0.5 * (sampleL + sampleR);
@@ -155,6 +165,7 @@ void MyAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         channelR[sample] = sampleR;
     }
 }
+
 
 //==============================================================================
 bool MyAudioProcessor::hasEditor() const {

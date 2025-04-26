@@ -3,21 +3,9 @@
 #include <fstream>
 
 ShiftEffect::ShiftEffect(const int sampleRate) {
-//    if (sampleRate < 44100) {
-//        LEN = 512;
-//        synthesisHop = 150;
-//        windowLenEnum = WindowLenEnum::S;
-//    }
-//    else if (44100 < sampleRate && sampleRate < 88200) {
-        LEN = 1024;
-        synthesisHop = 250;
-        windowLenEnum = WindowLenEnum::M;
-//    }
-//    else {
-//        LEN = 2048;
-//        synthesisHop = 350;
-//        windowLenEnum = WindowLenEnum::L;
-//    }
+    LEN = 1024;
+    synthesisHop = 250;
+    windowLenEnum = WindowLenEnum::M;
     jassert(LEN % 2 == 0);
     psi.resize(LEN, 0.f);
     ramp.resize(LEN, 0.f);

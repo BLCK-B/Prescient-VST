@@ -7,18 +7,8 @@ using namespace std::chrono;
 // constructor
 LPCeffect::LPCeffect(const int sampleRate) {
     shiftEffect = new ShiftEffect(sampleRate);
-//    if (sampleRate < 44100) {
-//        windowSize = 1024;
-//        windowSizeEnum = WindowSizeEnum::S;
-//    }
-//    else if (44100 < sampleRate && sampleRate < 88200) {
-        windowSize = 2048;
-        windowSizeEnum = WindowSizeEnum::M;
-//    }
-//    else {
-//        windowSize = 4096;
-//        windowSizeEnum = WindowSizeEnum::L;
-//    }
+    windowSize = 2048;
+    windowSizeEnum = WindowSizeEnum::M;
     jassert(windowSize % 2 == 0); // real-to-complex and complex-to-real transforms are only available for even sizes
     overlapSize = round(windowSize * overlap);
     hopSize = windowSize - overlapSize;

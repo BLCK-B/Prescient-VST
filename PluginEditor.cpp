@@ -50,7 +50,7 @@ static const char* getMimeForExtension (const juce::String& extension) {
 MyAudioProcessorEditor::MyAudioProcessorEditor(MyAudioProcessor &p)
         : AudioProcessorEditor(&p), processorRef(p),
           modelOrderRelay{
-                  webView, "model order"
+                  webView, "modelOrder"
           },
           passthroughRelay{
                   webView, "passthrough"
@@ -86,7 +86,7 @@ MyAudioProcessorEditor::MyAudioProcessorEditor(MyAudioProcessor &p)
                           .withOptionsFrom(enableLPCRelay)
           },
           modelOrderSliderAttachment{
-                  *processorRef.treeState.getParameter("model order"), modelOrderRelay, nullptr
+                  *processorRef.treeState.getParameter("modelOrder"), modelOrderRelay, nullptr
           },
           passthroughSliderAttachment{
                   *processorRef.treeState.getParameter("passthrough"), passthroughRelay, nullptr
@@ -122,9 +122,13 @@ MyAudioProcessorEditor::~MyAudioProcessorEditor() { }
 //==============================================================================
 
 auto MyAudioProcessorEditor::getResource(const juce::String& url) -> std::optional<Resource> {
-    static const auto resourceFileRoot = juce::File{"C:/MyFilesDontDelete/project/MyAudioPlugin/GUI/public"};
-//    static const auto resourceFileRoot = juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentApplicationFile)
-//                    .getChildFile("public");
+    // vst3 searches for 'public' in 'Contents' that must be added each build
+    static const auto resourceFileRoot =
+            juce::File::getSpecialLocation(
+                    juce::File::SpecialLocationType::currentApplicationFile)
+                    .getParentDirectory()
+                    .getParentDirectory()
+                    .getChildFile("public");
 
     const auto resourceToRetrieve = url == "/" ? "index.html" : url.fromFirstOccurrenceOf("/", false, false);
     const auto resource = resourceFileRoot.getChildFile(resourceToRetrieve).createInputStream();
@@ -134,6 +138,7 @@ auto MyAudioProcessorEditor::getResource(const juce::String& url) -> std::option
     }
     return std::nullopt;
 }
+
 
 void MyAudioProcessorEditor::resized() {
     webView.setBounds(getLocalBounds());

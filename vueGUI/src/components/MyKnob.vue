@@ -43,6 +43,7 @@ export default {
   mounted() {
     const saved = localStorage.getItem(this.backendId)
     this.value = saved !== null ? parseFloat(saved) : this.defaultVal
+    this.sendToBackend(this.value)
   },
   data() {
     return {

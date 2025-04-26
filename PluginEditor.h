@@ -13,8 +13,6 @@ private:
     using Resource = juce::WebBrowserComponent::Resource;
     static std::optional<Resource> getResource(const juce::String& url) ;
 
-    // This reference is provided as a quick way for your editor to
-    // access the processor object that created it.
     MyAudioProcessor& processorRef;
 
     juce::WebSliderRelay modelOrderRelay;
@@ -35,7 +33,7 @@ private:
     juce::WebSliderParameterAttachment monostereoSliderAttachment;
     juce::WebSliderParameterAttachment enableLPCSliderAttachment;
 
-    const juce::ParameterID modelOrder{"model order", 1};
+    const juce::ParameterID modelOrder{"modelOrder", 1};
     const juce::ParameterID passthrough{"passthrough", 1};
     const juce::ParameterID shiftVoice1{"shiftVoice1", 1};
     const juce::ParameterID shiftVoice2{"shiftVoice2", 1};
