@@ -14,6 +14,13 @@ Open-source VST plugin - vocoder with pitch shifting.
 - Dry / wet: ratio of effect signal to input signal
 - Voice 1, 2, 3: advanced pitch shifting - first pitch shifts the voice, second and third add additional shifted copies
 
+## Features
+- Good performance and real-time processing (latency in the tens of ms)
+- Good sound quality
+- WebView UI with native-like knobs
+- Choose any inputs, or try a microphone
+- Completely free
+
 ## Installation
 For technical reasons, the effect is only compatible and verified to work with the following systems:
 | OS  | DAW |
