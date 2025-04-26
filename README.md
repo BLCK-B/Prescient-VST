@@ -15,7 +15,7 @@ Open-source VST plugin - vocoder with pitch shifting.
 - Voice 1, 2, 3: advanced pitch shifting - first pitch shifts the voice, second and third add additional shifted copies
 
 ## Features
-- Good performance and real-time processing (latency in the tens of ms)
+- Good performance and real-time processing (latency ~50ms)
 - Good sound quality
 - WebView UI with native-like knobs
 - Choose any inputs, or try a microphone
@@ -40,10 +40,21 @@ A carrier signal, e.g. guitar or synthesizer, is fed into one channel (green). T
 ### Try it out
 1. Download the .VST file
 2. Unzip the file and place it in a VST directory like `C:\Program Files\Common Files\VST3\`
-3. Follow the steps for <a href="#FL Studio">FL Studio</a> or <a href="#Ableton">Ableton</a>
+3. Follow the steps for <a href="#FL Studio setup">FL Studio</a> or <a href="#Ableton setup">Ableton</a>
+
+## Project description
+
+</p>
+<div align="center">
+<img src="https://github.com/user-attachments/assets/8e81d350-7854-4392-8c73-fe33359a1b8e" width="420">
+</div>
+
+<div align="center">
+<img src="https://github.com/user-attachments/assets/08df12e5-d2cc-4a10-9587-f09f3400d01a" width="320">
+</div>
 
 ---
-### FL Studio
+## FL Studio setup
 
 Click the insert effect button of the channel that you have selected for the carrier signal.
 
@@ -82,7 +93,7 @@ When you hit play, you should hear only the carrier signal. Set the plug-in to r
 I recommend setting the plug-in window as detached.
 
 ---
-### Ableton
+## Ableton setup
 *Settings* → *Plug-Ins* → *enable VST3*, *Rescan*.
 
 In plugin browser (not pictured), find *Prescient-VST* under *BLCK*. Drag the effect onto the carrier track in *Arrangement View*.
@@ -102,16 +113,4 @@ The sidechain input of the effect must be set so the effect can receive the sign
 <div align="center">
 <img src="https://github.com/user-attachments/assets/92a221d6-c30d-4dca-8554-0a951ad68452" width="360">
 </div>
-
-## Project description
-
-</p>
-<div align="center">
-<img src="https://github.com/user-attachments/assets/8e81d350-7854-4392-8c73-fe33359a1b8e" width="450">
-</div>
-
-<div align="center">
-<img src="https://github.com/user-attachments/assets/08df12e5-d2cc-4a10-9587-f09f3400d01a" width="450">
-</div>
-
 
