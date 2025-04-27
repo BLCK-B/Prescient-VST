@@ -1,7 +1,7 @@
 <h2 align="center">Prescient</h2>
 
 <p align="center">
-Open-source VST plugin - vocoder with pitch shifting.
+Open-source VST plugin: vocoder with pitch shifting.
 </p>
 <div align="center">
 <img src="https://github.com/user-attachments/assets/63e10b8b-03e7-40e6-b980-2bd7ab21e0dc" width="450">
@@ -9,7 +9,7 @@ Open-source VST plugin - vocoder with pitch shifting.
 
 ## Parameters
 - LPC: vocoder on/off
-- Order: vocoder order - has effect only with vocoder on
+- Order: vocoder order
 - Mono / stereo: choose stereo, mono, or anything in-between
 - Dry / wet: ratio of effect signal to input signal
 - Voice 1, 2, 3: advanced pitch shifting - first pitch shifts the voice, second and third add additional shifted copies
@@ -19,7 +19,6 @@ Open-source VST plugin - vocoder with pitch shifting.
 - Good sound quality
 - WebView UI with native-like knobs
 - Choose any inputs, or try a microphone
-- Completely free
 
 ## Installation
 For technical reasons, the effect is only compatible and verified to work with the following systems:
@@ -28,6 +27,8 @@ For technical reasons, the effect is only compatible and verified to work with t
 | Windows x64  | FL Studio, Ableton  |
 
 The effect will not be ported to other systems nor ensured to work with other DAWS.
+
+The recommended DAW sample rate is 44.1 kHz.
 
 ### Sidechain wiring
 A carrier signal, e.g. guitar or synthesizer, is fed into one channel (green). The adjacent channel (blue) receives a voice signal - voice recording or microphone input. The effect is inserted on the carrier channel. To wire both signals into the effect, sidechain is used (connection highlighted in blue).
@@ -40,18 +41,39 @@ A carrier signal, e.g. guitar or synthesizer, is fed into one channel (green). T
 ### Try it out
 1. Download the .VST file
 2. Unzip the file and place it in a VST directory like `C:\Program Files\Common Files\VST3\`
-3. Follow the steps for <a href="#FL Studio setup">FL Studio</a> or <a href="#Ableton setup">Ableton</a>
+3. Follow the steps for <a href="#fl-studio-setup">FL Studio setup</a> or <a href="#ableton-setup">Ableton</a>
 
 ## Project description
+
+The core effect is a vocoder based on Linear Predictive Coding (LPC). The pitch shifting algorithm is inspired by DAFX.
+
+The project is based on the JUCE framework and KFRlib for FFT. Vue GUI is integrated as WebView.
 
 </p>
 <div align="center">
 <img src="https://github.com/user-attachments/assets/8e81d350-7854-4392-8c73-fe33359a1b8e" width="420">
+<p>
+The final effect's block scheme.
+</p>
 </div>
 
 <div align="center">
 <img src="https://github.com/user-attachments/assets/08df12e5-d2cc-4a10-9587-f09f3400d01a" width="320">
+<p>
+The cross-synthesis effect.
+</p>
 </div>
+
+Important algorithms:
+- Autocorrelation
+- Convolution
+- Formant-preserving pitch shifting
+- IIR all-pole filter
+- Levinson-Durbin recursion
+
+Optimizations were made to achieve real-time processing. Many algorithms are implemented using FFT.
+
+A python implementation was created to test the algorithms: [Python LPC vocoder](https://github.com/BLCK-B/Python-LPC-vocoder).
 
 ---
 ## FL Studio setup
