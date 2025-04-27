@@ -37,6 +37,7 @@ A carrier signal, e.g. guitar or synthesizer, is fed into one channel (green). T
 <img src="https://github.com/user-attachments/assets/ea5cfbe6-e20d-4c62-ac29-b9cabf7fbaf9" width="260">
 </div>
 
+Please note that the carrier should ideally be a sound with a rich spectrum.
 
 ### Try it out
 1. Download the .VST file
@@ -136,3 +137,7 @@ The sidechain input of the effect must be set so the effect can receive the sign
 <img src="https://github.com/user-attachments/assets/92a221d6-c30d-4dca-8554-0a951ad68452" width="360">
 </div>
 
+---
+## Known issues
+- On reopening window, `Order` jumps to a low value
+- The effect may clash with a limiter on master
