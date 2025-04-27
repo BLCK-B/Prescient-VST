@@ -40,7 +40,7 @@ A carrier signal, e.g. guitar or synthesizer, is fed into one channel (green). T
 Please note that the carrier should ideally be a sound with a rich spectrum.
 
 ### Try it out
-1. Download the .VST file
+1. [Download](https://github.com/BLCK-B/Prescient-VST/releases) the .VST file
 2. Unzip the file and place it in a VST directory like `C:\Program Files\Common Files\VST3\`
 3. Follow the steps for <a href="#fl-studio-setup">FL Studio setup</a> or <a href="#ableton-setup">Ableton</a>
 
