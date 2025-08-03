@@ -7,6 +7,9 @@ Open-source VST plugin: vocoder with pitch shifting.
 <img src="https://github.com/user-attachments/assets/63e10b8b-03e7-40e6-b980-2bd7ab21e0dc" width="450">
 </div>
 
+> [!NOTE]  
+> This project is complete and archived. It will not receive updates, but it remains functional.
+
 ## Parameters
 - LPC: vocoder on/off
 - Order: vocoder order
